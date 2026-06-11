@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Private per-user profile. Only the owner can read or write.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 2
+        && request.resource.data.username.size() <= 24
+        && request.resource.data.elo is number
+        && request.resource.data.elo == 1200;
+      allow update: if isOwner(uid)
+        && request.resource.data.elo is number
+        && request.resource.data.elo >= 0
+        && request.resource.data.elo <= 4000;
+      allow delete: if isOwner(uid);
+    }
+
+    // Public mirror, only present for players who opted in.
+    // World-readable: powers the in-app leaderboard and the website.
+    match /publicProfiles/{uid} {
+      allow read: if true;
+      allow create, update: if isOwner(uid)
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 2
+        && request.resource.data.username.size() <= 24
+        && request.resource.data.elo is number
+        && request.resource.data.elo >= 0
+        && request.resource.data.elo <= 4000;
+      allow delete: if isOwner(uid);
+    }
+
+    // Online games. Readable by any signed-in player (needed for
+    // quick-match discovery); writable only by participants, with a
+    // narrow exception that lets a joiner claim the open seat of a
+    // waiting game.
+    match /games/{gameId} {
+      function isParticipant() {
+        return signedIn()
+          && (resource.data.whiteUid == request.auth.uid
+              || resource.data.blackUid == request.auth.uid);
+      }
+
+      function isJoiningOpenSeat() {
+        return signedIn()
+          && resource.data.status == 'waiting'
+          && request.resource.data.status == 'active'
+          && (
+            (resource.data.blackUid == null
+              && request.resource.data.blackUid == request.auth.uid
+              && request.resource.data.whiteUid == resource.data.whiteUid)
+            ||
+            (resource.data.whiteUid == null
+              && request.resource.data.whiteUid == request.auth.uid
+              && request.resource.data.blackUid == resource.data.blackUid)
+          );
+      }
+
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (request.resource.data.whiteUid == request.auth.uid
+            || request.resource.data.blackUid == request.auth.uid)
+        && request.resource.data.status in ['waiting', 'active'];
+      allow update: if isParticipant() || isJoiningOpenSeat();
+      allow delete: if signedIn()
+        && resource.data.status == 'waiting'
+        && (resource.data.whiteUid == request.auth.uid
+            || resource.data.blackUid == request.auth.uid);
+    }
+
+    // Short-lived invite code -> gameId lookups.
+    match /inviteCodes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.gameId is string
+        && request.resource.data.hostUid == request.auth.uid;
+      // The joiner deletes the code when consuming it.
+      allow delete: if signedIn();
+    }
+  }
+}

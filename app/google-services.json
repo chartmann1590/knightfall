@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "439141758944",
+    "project_id": "knightfall-chess-app",
+    "storage_bucket": "knightfall-chess-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:439141758944:android:834a3be6d9201f0cd41d85",
+        "android_client_info": {
+          "package_name": "com.chartmann.knightfall"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCM6V5eOm7Po54odRYWPjuygV_kFyHeqhw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

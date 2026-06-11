@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Profile — Knightfall</title>
+  <meta name="description" content="A Knightfall player profile — rating, wins, and stats.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♞</text></svg>">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="knight">♞</span> Knightfall</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="https://github.com/chartmann1590/knightfall/releases/latest">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <section>
+    <div class="container" id="content">
+      <div class="state-msg">
+        <span class="big">♞</span>
+        Loading profile…
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>♞ Knightfall — free chess for Android</p>
+    <p><a href="leaderboard.html">Back to the leaderboard</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    (async () => {
+      const content = document.getElementById('content');
+      const uid = new URLSearchParams(location.search).get('uid');
+      if (!uid) {
+        content.innerHTML = `<div class="state-msg"><span class="big">🤔</span>No player specified.<br><a href="leaderboard.html">Browse the leaderboard</a></div>`;
+        return;
+      }
+      try {
+        const p = await fetchProfile(uid);
+        if (!p) {
+          content.innerHTML = `<div class="state-msg"><span class="big">🕵️</span>This profile is private or doesn't exist.<br><a href="leaderboard.html">Browse the leaderboard</a></div>`;
+          return;
+        }
+        const games = p.wins + p.losses + p.draws;
+        document.title = `${p.username} — Knightfall`;
+        content.innerHTML = `
+          <div class="profile-card">
+            <div class="avatar">${escapeHtml(p.username.charAt(0).toUpperCase())}</div>
+            <h2>${escapeHtml(p.username)}</h2>
+            <div class="elo-big">${p.elo}</div>
+            <div class="elo-label">ELO RATING</div>
+            <div class="stat-grid">
+              <div class="stat"><div class="num w">${p.wins}</div><div class="lbl">Wins</div></div>
+              <div class="stat"><div class="num l">${p.losses}</div><div class="lbl">Losses</div></div>
+              <div class="stat"><div class="num">${p.draws}</div><div class="lbl">Draws</div></div>
+              <div class="stat"><div class="num">${p.bestWinStreak}</div><div class="lbl">Best streak</div></div>
+            </div>
+            <p style="margin-top:22px; color:var(--smoke); font-size:0.9rem;">${games} online game${games === 1 ? '' : 's'} played</p>
+          </div>`;
+      } catch (e) {
+        content.innerHTML = `<div class="state-msg"><span class="big">⚠️</span>Couldn't load this profile right now.</div>`;
+      }
+    })();
+  </script>
+</body>
+</html>
