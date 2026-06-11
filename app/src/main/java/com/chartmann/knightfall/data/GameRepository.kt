@@ -119,6 +119,8 @@ class GameRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
                         "blackEloStart" to elo,
                         "status" to GameStatusValues.ACTIVE,
                         "lastMoveAt" to Timestamp.now(),
+                        "whiteTimeMs" to 900_000L,
+                        "blackTimeMs" to 900_000L,
                     ),
                 )
             } else {
@@ -130,6 +132,8 @@ class GameRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
                         "whiteEloStart" to elo,
                         "status" to GameStatusValues.ACTIVE,
                         "lastMoveAt" to Timestamp.now(),
+                        "whiteTimeMs" to 900_000L,
+                        "blackTimeMs" to 900_000L,
                     ),
                 )
             }
@@ -145,12 +149,14 @@ class GameRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
         }
     }
 
-    suspend fun playMove(gameId: String, uci: String) {
+    suspend fun playMove(gameId: String, uci: String, moverSide: String = "white", moverTimeMs: Long = 900_000L) {
+        val timeField = if (moverSide == "white") "whiteTimeMs" else "blackTimeMs"
         games.document(gameId).update(
             mapOf(
                 "moves" to FieldValue.arrayUnion(uci),
                 "lastMoveAt" to Timestamp.now(),
                 "drawOfferBy" to null,
+                timeField to moverTimeMs.coerceAtLeast(0L),
             ),
         ).await()
     }

@@ -42,6 +42,8 @@ data class OnlineGameUiState(
     val drawOfferedByOpponent: Boolean = false,
     val opponentIdle: Boolean = false,
     val error: String? = null,
+    val whiteTimeMs: Long = 900_000L,
+    val blackTimeMs: Long = 900_000L,
 )
 
 class OnlineGameViewModel(
@@ -67,11 +69,39 @@ class OnlineGameViewModel(
             }
         }
         viewModelScope.launch {
+            while (true) {
+                delay(100)
+                tickClock()
+            }
+        }
+        viewModelScope.launch {
             // Watchdog for abandoned games.
             while (true) {
                 delay(15_000)
                 checkOpponentIdle()
             }
+        }
+    }
+
+    private fun tickClock() {
+        val s = _state.value
+        if (s.finished || s.waitingForOpponent) return
+        val game = s.game ?: return
+        val lastMoveMs = game.lastMoveAt?.toDate()?.time ?: return
+        val elapsed = System.currentTimeMillis() - lastMoveMs
+        val isWhiteTurn = s.sideToMove == Side.WHITE
+        val newWhiteMs = if (isWhiteTurn) (game.whiteTimeMs - elapsed).coerceAtLeast(0) else game.whiteTimeMs
+        val newBlackMs = if (!isWhiteTurn) (game.blackTimeMs - elapsed).coerceAtLeast(0) else game.blackTimeMs
+        _state.value = s.copy(whiteTimeMs = newWhiteMs, blackTimeMs = newBlackMs)
+        if (isWhiteTurn && newWhiteMs == 0L) onClockTimeout(Side.WHITE)
+        else if (!isWhiteTurn && newBlackMs == 0L) onClockTimeout(Side.BLACK)
+    }
+
+    private fun onClockTimeout(side: Side) {
+        if (_state.value.finished) return
+        val result = if (side == Side.WHITE) GameResultValues.BLACK_WIN else GameResultValues.WHITE_WIN
+        viewModelScope.launch {
+            try { repo.finishGame(gameId, result, EndReasons.TIMEOUT) } catch (_: Exception) {}
         }
     }
 
@@ -178,6 +208,7 @@ class OnlineGameViewModel(
             EndReasons.FIFTY_MOVES -> "fifty-move rule"
             EndReasons.INSUFFICIENT_MATERIAL -> "insufficient material"
             EndReasons.ABANDONED -> "opponent left"
+            EndReasons.TIMEOUT -> if (iWon) "opponent ran out of time" else "you ran out of time"
             else -> ""
         }
 
@@ -298,9 +329,15 @@ class OnlineGameViewModel(
             capturedByOpponent = chess.capturedBy(_state.value.mySide.flip2()),
         )
 
+        val game = _state.value.game
+        val mySeat = game?.seatOf(myUid) ?: "white"
+        val storedMs = if (mySeat == "white") game?.whiteTimeMs ?: 900_000L else game?.blackTimeMs ?: 900_000L
+        val elapsed = System.currentTimeMillis() - (game?.lastMoveAt?.toDate()?.time ?: System.currentTimeMillis())
+        val remainingMs = (storedMs - elapsed).coerceAtLeast(0L)
+
         viewModelScope.launch {
             try {
-                repo.playMove(gameId, uci)
+                repo.playMove(gameId, uci, mySeat, remainingMs)
                 val status = chess.status()
                 if (status != GameStatus.ONGOING) finishFromPosition(status)
             } catch (e: Exception) {

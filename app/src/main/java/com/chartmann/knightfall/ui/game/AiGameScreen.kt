@@ -135,6 +135,7 @@ fun AiGameScreen(
                 capturedPieces = state.capturedByAi,
                 capturedSide = state.playerSide,
                 materialAdvantage = 0,
+                timeMs = if (state.playerSide == Side.WHITE) state.blackTimeMs else state.whiteTimeMs,
             )
             Spacer(Modifier.height(8.dp))
 
@@ -159,6 +160,7 @@ fun AiGameScreen(
                 capturedPieces = state.capturedByPlayer,
                 capturedSide = if (state.playerSide == Side.WHITE) Side.BLACK else Side.WHITE,
                 materialAdvantage = 0,
+                timeMs = if (state.playerSide == Side.WHITE) state.whiteTimeMs else state.blackTimeMs,
             )
 
             AnimatedVisibility(visible = state.outcome != null) {
@@ -170,16 +172,20 @@ fun AiGameScreen(
                     GameOverCard(
                         title = when {
                             outcome == GameOutcome.DRAW -> "Draw"
+                            state.timedOut && playerWon -> "You win! 🏆"
+                            state.timedOut -> "Time's up"
                             playerWon -> "You win! 🏆"
                             state.playerResigned -> "You resigned"
                             else -> "Checkmate"
                         },
                         subtitle = when {
                             outcome == GameOutcome.DRAW -> statusText(state.status)
+                            state.timedOut && playerWon -> "Opponent ran out of time."
+                            state.timedOut -> "You ran out of time."
                             playerWon -> "Beautifully played."
                             else -> "The ${difficulty.label} got you this time."
                         },
-                        eloDelta = null,
+                        eloDelta = state.eloDelta,
                         onRematch = { vm.newGame() },
                         onExit = onExit,
                         modifier = Modifier.padding(top = 12.dp),

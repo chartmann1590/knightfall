@@ -32,6 +32,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+
+fun formatClock(ms: Long): String {
+    val totalSecs = (ms / 1000).coerceAtLeast(0)
+    return "%d:%02d".format(totalSecs / 60, totalSecs % 60)
+}
 import com.chartmann.knightfall.ui.board.pieceDrawable
 import com.chartmann.knightfall.ui.theme.Gold
 import com.chartmann.knightfall.ui.theme.WinGreen
@@ -48,6 +53,7 @@ fun PlayerBar(
     capturedPieces: List<PieceType>,
     capturedSide: Side,
     materialAdvantage: Int,
+    timeMs: Long? = null,
     avatarColor: Color = Gold,
     modifier: Modifier = Modifier,
 ) {
@@ -91,8 +97,26 @@ fun PlayerBar(
                 }
             }
             CapturedRow(capturedPieces, capturedSide, materialAdvantage)
-            if (isTurn) {
+            if (timeMs != null) {
                 Spacer(Modifier.width(8.dp))
+                val lowTime = timeMs in 1..29_999
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (lowTime) MaterialTheme.colorScheme.errorContainer
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Text(
+                        text = formatClock(timeMs),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (lowTime) MaterialTheme.colorScheme.onErrorContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
+            }
+            if (isTurn) {
+                Spacer(Modifier.width(6.dp))
                 Box(
                     modifier = Modifier
                         .size(8.dp)

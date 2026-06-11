@@ -53,6 +53,7 @@ object EndReasons {
     const val REPETITION = "repetition"
     const val FIFTY_MOVES = "fifty_moves"
     const val ABANDONED = "abandoned"
+    const val TIMEOUT = "timeout"
 }
 
 /** Online game stored at games/{gameId}. */
@@ -75,6 +76,8 @@ data class OnlineGame(
     val rematchOfferBy: String? = null,
     val eloAppliedWhite: Boolean = false,
     val eloAppliedBlack: Boolean = false,
+    val whiteTimeMs: Long = 900_000L,
+    val blackTimeMs: Long = 900_000L,
     val createdAt: Timestamp? = null,
     val lastMoveAt: Timestamp? = null,
     val finishedAt: Timestamp? = null,

@@ -72,8 +72,23 @@ class UserRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
         if (profile?.isPublic == true) syncPublicProfile(uid)
     }
 
-    suspend fun incrementAiWins(uid: String) {
-        userDoc(uid).update("aiWins", com.google.firebase.firestore.FieldValue.increment(1)).await()
+    suspend fun applyAiGameResult(uid: String, newElo: Int, won: Boolean, drew: Boolean) {
+        db.runTransaction { tx ->
+            val snap = tx.get(userDoc(uid))
+            val profile = snap.toObject(UserProfile::class.java) ?: return@runTransaction
+            val streak = if (won) profile.currentWinStreak + 1 else 0
+            tx.update(
+                userDoc(uid),
+                mapOf(
+                    "elo" to newElo,
+                    "aiWins" to profile.aiWins + (if (won) 1 else 0),
+                    "currentWinStreak" to streak,
+                    "bestWinStreak" to maxOf(profile.bestWinStreak, streak),
+                ),
+            )
+        }.await()
+        val profile = getProfile(uid)
+        if (profile?.isPublic == true) syncPublicProfile(uid)
     }
 
     /** Turns the public leaderboard profile on or off. */

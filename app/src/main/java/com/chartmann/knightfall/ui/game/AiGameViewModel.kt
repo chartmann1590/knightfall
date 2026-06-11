@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.chess.ChessGame
+import com.chartmann.knightfall.chess.EloCalculator
 import com.chartmann.knightfall.chess.GameOutcome
 import com.chartmann.knightfall.chess.GameStatus
 import com.chartmann.knightfall.chess.StockfishEngine
@@ -47,6 +48,10 @@ data class AiGameUiState(
     val coachInitializing: Boolean = false,
     val coachMessages: List<CoachMessage> = emptyList(),
     val moveCount: Int = 0,
+    val whiteTimeMs: Long = 15 * 60 * 1000L,
+    val blackTimeMs: Long = 15 * 60 * 1000L,
+    val eloDelta: Int? = null,
+    val timedOut: Boolean = false,
 )
 
 class AiGameViewModel(
@@ -70,6 +75,7 @@ class AiGameViewModel(
     val state: StateFlow<AiGameUiState> = _state.asStateFlow()
 
     private var coachJob: Job? = null
+    private var timerJob: Job? = null
     private var lastEvalCp: Int? = null
     private var lastMateIn: Int? = null
 
@@ -78,6 +84,7 @@ class AiGameViewModel(
             engine.setDifficulty(difficulty)
             if (game.sideToMove != playerSide) engineMove()
         }
+        startClock()
         viewModelScope.launch {
             if (container.modelManager.isDownloaded && container.settings.current().coachEnabled) {
                 _state.value = _state.value.copy(coachInitializing = true)
@@ -195,6 +202,7 @@ class AiGameViewModel(
     }
 
     private fun afterMove(wasCapture: Boolean) {
+        if (_state.value.outcome != null) return  // already ended by timeout
         val status = game.status()
         val outcome = game.outcome()
         val last = game.lastMove()
@@ -218,16 +226,15 @@ class AiGameViewModel(
 
         when {
             outcome != null -> {
+                timerJob?.cancel()
                 val playerWon = (outcome == GameOutcome.WHITE_WIN && playerSide == Side.WHITE) ||
                     (outcome == GameOutcome.BLACK_WIN && playerSide == Side.BLACK)
                 when {
                     outcome == GameOutcome.DRAW -> sounds.play(SoundManager.Sound.DRAW)
-                    playerWon -> {
-                        sounds.play(SoundManager.Sound.WIN)
-                        recordAiWin()
-                    }
+                    playerWon -> sounds.play(SoundManager.Sound.WIN)
                     else -> sounds.play(SoundManager.Sound.LOSE)
                 }
+                recordAiGameResult(outcome, playerSide)
             }
             game.isKingInCheck() -> sounds.play(SoundManager.Sound.CHECK)
             wasCapture -> sounds.play(SoundManager.Sound.CAPTURE)
@@ -235,23 +242,63 @@ class AiGameViewModel(
         }
     }
 
-    private fun recordAiWin() {
-        val uid = container.auth.uid ?: return
-        viewModelScope.launch {
-            try {
-                container.users.incrementAiWins(uid)
-            } catch (_: Exception) {
+    private fun startClock() {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(100)
+                val s = _state.value
+                if (s.outcome != null || s.status != GameStatus.ONGOING) break
+                if (game.sideToMove == Side.WHITE) {
+                    val newTime = (s.whiteTimeMs - 100).coerceAtLeast(0)
+                    _state.value = s.copy(whiteTimeMs = newTime)
+                    if (newTime == 0L) { onTimeout(Side.WHITE); break }
+                } else {
+                    val newTime = (s.blackTimeMs - 100).coerceAtLeast(0)
+                    _state.value = s.copy(blackTimeMs = newTime)
+                    if (newTime == 0L) { onTimeout(Side.BLACK); break }
+                }
             }
         }
     }
 
+    private fun onTimeout(timedOutSide: Side) {
+        val s = _state.value
+        val outcome = if (timedOutSide == Side.WHITE) GameOutcome.BLACK_WIN else GameOutcome.WHITE_WIN
+        val playerWon = (outcome == GameOutcome.WHITE_WIN && s.playerSide == Side.WHITE) ||
+            (outcome == GameOutcome.BLACK_WIN && s.playerSide == Side.BLACK)
+        _state.value = s.copy(outcome = outcome, timedOut = true)
+        if (playerWon) sounds.play(SoundManager.Sound.WIN) else sounds.play(SoundManager.Sound.LOSE)
+        recordAiGameResult(outcome, s.playerSide)
+    }
+
+    private fun recordAiGameResult(outcome: GameOutcome, playerSide: Side) {
+        val uid = container.auth.uid ?: return
+        viewModelScope.launch {
+            try {
+                val profile = container.users.getProfile(uid) ?: return@launch
+                val aiElo = _state.value.difficulty.approxElo
+                val newPlayerElo = if (playerSide == Side.WHITE) {
+                    EloCalculator.newRatings(profile.elo, aiElo, outcome).first
+                } else {
+                    EloCalculator.newRatings(aiElo, profile.elo, outcome).second
+                }
+                val playerWon = (outcome == GameOutcome.WHITE_WIN && playerSide == Side.WHITE) ||
+                    (outcome == GameOutcome.BLACK_WIN && playerSide == Side.BLACK)
+                container.users.applyAiGameResult(uid, newPlayerElo, playerWon, outcome == GameOutcome.DRAW)
+                _state.value = _state.value.copy(eloDelta = newPlayerElo - profile.elo)
+            } catch (_: Exception) {}
+        }
+    }
+
     fun resign() {
-        if (_state.value.status != GameStatus.ONGOING) return
+        val s = _state.value
+        if (s.status != GameStatus.ONGOING || s.outcome != null) return
+        timerJob?.cancel()
+        val outcome = if (s.playerSide == Side.WHITE) GameOutcome.BLACK_WIN else GameOutcome.WHITE_WIN
         sounds.play(SoundManager.Sound.LOSE)
-        _state.value = _state.value.copy(
-            playerResigned = true,
-            outcome = if (_state.value.playerSide == Side.WHITE) GameOutcome.BLACK_WIN else GameOutcome.WHITE_WIN,
-        )
+        _state.value = s.copy(playerResigned = true, outcome = outcome)
+        recordAiGameResult(outcome, s.playerSide)
     }
 
     fun requestHint() {
@@ -275,6 +322,7 @@ class AiGameViewModel(
     }
 
     fun newGame() {
+        timerJob?.cancel()
         game.reset()
         lastEvalCp = null
         lastMateIn = null
@@ -294,7 +342,12 @@ class AiGameViewModel(
             pendingPromotion = null,
             hintMove = null,
             moveCount = 0,
+            whiteTimeMs = 15 * 60 * 1000L,
+            blackTimeMs = 15 * 60 * 1000L,
+            eloDelta = null,
+            timedOut = false,
         )
+        startClock()
         if (game.sideToMove != _state.value.playerSide) {
             viewModelScope.launch { engineMove() }
         }

@@ -160,6 +160,7 @@ fun OnlineGameScreen(
                 capturedPieces = state.capturedByOpponent,
                 capturedSide = state.mySide,
                 materialAdvantage = 0,
+                timeMs = if (state.mySide == Side.WHITE) state.blackTimeMs else state.whiteTimeMs,
             )
             Spacer(Modifier.height(8.dp))
 
@@ -184,6 +185,7 @@ fun OnlineGameScreen(
                 capturedPieces = state.capturedByMe,
                 capturedSide = state.mySide.opposite(),
                 materialAdvantage = 0,
+                timeMs = if (state.mySide == Side.WHITE) state.whiteTimeMs else state.blackTimeMs,
             )
 
             AnimatedVisibility(visible = state.opponentIdle && !state.finished) {
