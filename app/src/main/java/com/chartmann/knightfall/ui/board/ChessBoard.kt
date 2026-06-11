@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -113,7 +115,9 @@ fun ChessBoard(
 ) {
     var boardSizePx by remember { mutableStateOf(0) }
     val tracker = remember { PieceTracker() }
-    val placed = tracker.update(position)
+    // Only recompute piece list when position changes, not on every recomposition
+    // (drag state changes trigger recomposition but shouldn't reassign piece IDs)
+    val placed by remember(position) { derivedStateOf { tracker.update(position) } }
 
     var dragFrom by remember { mutableStateOf<Square?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
@@ -177,32 +181,36 @@ fun ChessBoard(
         }
 
         for (p in placed) {
-            val res = pieceDrawable(p.piece) ?: continue
-            val col = if (flipped) 7 - p.square.col else p.square.col
-            val row = if (flipped) p.square.row else 7 - p.square.row
-            val isDragged = dragFrom == p.square
+            key(p.id) {
+                val res = pieceDrawable(p.piece)
+                if (res != null) {
+                    val col = if (flipped) 7 - p.square.col else p.square.col
+                    val row = if (flipped) p.square.row else 7 - p.square.row
+                    val isDragged = dragFrom == p.square
 
-            val target = IntOffset(col * cellPx, row * cellPx)
-            val animated by animateIntOffsetAsState(
-                targetValue = target,
-                animationSpec = tween(durationMillis = 180),
-                label = "piece-${p.id}",
-            )
-            val offset = if (isDragged) {
-                IntOffset(
-                    (dragOffset.x - cellPx / 2f).roundToInt(),
-                    (dragOffset.y - cellPx * 0.75f).roundToInt(),
-                )
-            } else animated
+                    val target = IntOffset(col * cellPx, row * cellPx)
+                    val animated by animateIntOffsetAsState(
+                        targetValue = target,
+                        animationSpec = tween(durationMillis = 180),
+                        label = "piece-${p.id}",
+                    )
+                    val offset = if (isDragged) {
+                        IntOffset(
+                            (dragOffset.x - cellPx / 2f).roundToInt(),
+                            (dragOffset.y - cellPx * 0.75f).roundToInt(),
+                        )
+                    } else animated
 
-            Image(
-                painter = painterResource(res),
-                contentDescription = null,
-                modifier = Modifier
-                    .offset { offset }
-                    .size(cellDp)
-                    .zIndex(if (isDragged) 2f else 1f),
-            )
+                    Image(
+                        painter = painterResource(res),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .offset { offset }
+                            .size(cellDp)
+                            .zIndex(if (isDragged) 2f else 1f),
+                    )
+                }
+            }
         }
     }
 }
