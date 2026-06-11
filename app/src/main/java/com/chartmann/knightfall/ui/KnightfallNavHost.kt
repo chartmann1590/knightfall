@@ -43,6 +43,8 @@ import com.chartmann.knightfall.ui.onboarding.OnboardingScreen
 import com.chartmann.knightfall.ui.profile.ProfileScreen
 import com.chartmann.knightfall.ui.session.SessionViewModel
 import com.chartmann.knightfall.ui.settings.SettingsScreen
+import com.chartmann.knightfall.ui.training.PuzzleScreen
+import com.chartmann.knightfall.ui.training.TrainingScreen
 import com.github.bhlangonijr.chesslib.Side
 import com.chartmann.knightfall.ads.AdManager
 import com.chartmann.knightfall.ads.findActivity
@@ -91,6 +93,7 @@ fun KnightfallNavHost() {
                 onLeaderboard = { navController.navigate("leaderboard") },
                 onProfile = { navController.navigate("profile") },
                 onSettings = { navController.navigate("settings") },
+                onTraining = { navController.navigate("training") },
             )
         }
 
@@ -221,6 +224,31 @@ fun KnightfallNavHost() {
                         popUpTo("home") { inclusive = true }
                     }
                 },
+            )
+        }
+
+        composable("training") {
+            TrainingScreen(
+                container = container,
+                profile = sessionState.profile,
+                onBack = { navController.popBackStack() },
+                onStartPuzzle = { puzzle ->
+                    navController.navigate("training/puzzle/${puzzle.id}")
+                },
+            )
+        }
+
+        composable(
+            route = "training/puzzle/{puzzleId}",
+            arguments = listOf(navArgument("puzzleId") { type = NavType.StringType }),
+        ) { entry ->
+            val puzzleId = entry.arguments?.getString("puzzleId") ?: return@composable
+            val puzzle = container.puzzles.getById(puzzleId) ?: return@composable
+            PuzzleScreen(
+                container = container,
+                puzzle = puzzle,
+                boardTheme = boardTheme,
+                onBack = { navController.popBackStack() },
             )
         }
     }

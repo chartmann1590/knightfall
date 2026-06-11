@@ -32,17 +32,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.data.model.GameResultValues
 import com.chartmann.knightfall.data.model.OnlineGame
 import com.chartmann.knightfall.data.model.UserProfile
+import com.chartmann.knightfall.ui.components.BadgeShelf
 import com.chartmann.knightfall.ui.theme.DrawGray
 import com.chartmann.knightfall.ui.theme.Gold
 import com.chartmann.knightfall.ui.theme.LossRed
@@ -138,6 +141,24 @@ fun ProfileScreen(
                 StatCard("Losses", "${profile?.losses ?: 0}", Modifier.weight(1f), LossRed)
                 StatCard("Draws", "${profile?.draws ?: 0}", Modifier.weight(1f), DrawGray)
             }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatCard("Puzzles", "${profile?.puzzlesSolved ?: 0}", Modifier.weight(1f))
+                StatCard("Puzzle streak", "${profile?.bestPuzzleStreak ?: 0}", Modifier.weight(1f))
+                StatCard("Badges", "${profile?.earnedBadges?.size ?: 0}", Modifier.weight(1f))
+            }
+
+            val earnedBadges = profile?.earnedBadges ?: emptyList()
+            if (earnedBadges.isNotEmpty()) {
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    "BADGES",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
+                BadgeShelf(badgeIds = earnedBadges)
+            }
 
             Spacer(Modifier.height(24.dp))
             Text(
@@ -165,6 +186,22 @@ fun ProfileScreen(
                 }
             }
             Spacer(Modifier.height(24.dp))
+            if (!isAnonymous) {
+                val uriHandler = LocalUriHandler.current
+                TextButton(
+                    onClick = {
+                        uriHandler.openUri("https://chartmann1590.github.io/knightfall/delete-account.html")
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) {
+                    Text(
+                        text = "Request Account Deletion",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Spacer(Modifier.height(24.dp))
+            }
         }
     }
 }

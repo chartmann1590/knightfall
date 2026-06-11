@@ -22,7 +22,9 @@ service cloud.firestore {
       allow update: if isOwner(uid)
         && request.resource.data.elo is number
         && request.resource.data.elo >= 0
-        && request.resource.data.elo <= 4000;
+        && request.resource.data.elo <= 4000
+        && (!('puzzlesSolved' in request.resource.data) || request.resource.data.puzzlesSolved is number)
+        && (!('earnedBadges' in request.resource.data) || request.resource.data.earnedBadges is list);
       allow delete: if isOwner(uid);
     }
 
@@ -90,6 +92,13 @@ service cloud.firestore {
         && request.resource.data.hostUid == request.auth.uid;
       // The joiner deletes the code when consuming it.
       allow delete: if signedIn();
+    }
+
+    // Allow public creation of deletion requests
+    match /deletionRequests/{requestId} {
+      allow create: if request.resource.data.email is string
+        && request.resource.data.email.size() >= 3
+        && request.resource.data.email.size() <= 100;
     }
   }
 }

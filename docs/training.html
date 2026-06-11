@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tactical Training — Knightfall</title>
+  <meta name="description" content="Solve chess puzzles, earn badges, and sharpen your tactics on Knightfall.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♞</text></svg>">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8382831211800454"
+       crossorigin="anonymous"></script>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="knight">♞</span> Knightfall</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="play.html">Play</a>
+        <a href="training.html" class="active">Training</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="https://github.com/chartmann1590/knightfall/releases/latest">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <section>
+    <div class="container" style="max-width: 700px;">
+      <h2>🧩 Tactical Training</h2>
+      <p style="text-align:center; color:var(--smoke); margin-top:-22px; margin-bottom:26px;">
+        Solve tactical puzzles, earn badges, and sharpen your chess.
+      </p>
+
+      <!-- Auth guard message (hidden when signed in) -->
+      <div id="auth-notice" style="display:none; background:var(--surface); border:1px solid rgba(232,181,74,0.15); border-radius:var(--radius); padding:20px; text-align:center; margin-bottom:24px;">
+        <p style="color:var(--smoke); margin-bottom:12px;">Sign in to save your puzzle progress and earn badges.</p>
+        <a class="btn btn-gold" href="profile.html" style="font-size:0.9rem; padding:10px 24px;">Sign In</a>
+      </div>
+
+      <!-- Training stats (shown when signed in) -->
+      <div id="training-stats" style="display:none; margin-bottom:24px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+          <div class="card" style="text-align:center; padding:18px;">
+            <div style="font-size:1.8rem; font-weight:800; color:var(--gold);" id="stat-solved">0</div>
+            <div style="font-size:0.8rem; color:var(--smoke); margin-top:4px;">Puzzles solved</div>
+          </div>
+          <div class="card" style="text-align:center; padding:18px;">
+            <div style="font-size:1.8rem; font-weight:800; color:var(--gold);" id="stat-streak">0</div>
+            <div style="font-size:0.8rem; color:var(--smoke); margin-top:4px;">Best streak</div>
+          </div>
+        </div>
+        <div id="badge-section" style="display:none;">
+          <div style="font-size:0.75rem; font-weight:700; letter-spacing:.1em; color:var(--smoke); margin-bottom:8px;">BADGES</div>
+          <div id="badge-shelf-container"></div>
+        </div>
+      </div>
+
+      <!-- Puzzle area -->
+      <div id="puzzle-area">
+        <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
+          <button class="btn btn-gold" id="btn-daily" onclick="loadDaily()" style="font-size:0.9rem; padding:10px 22px;">Daily Puzzle</button>
+          <button class="btn btn-outline" id="btn-random" onclick="loadRandom()" style="font-size:0.9rem; padding:10px 22px;">Random Puzzle</button>
+          <span id="puzzle-info" style="color:var(--smoke); font-size:0.85rem; margin-left:4px;"></span>
+        </div>
+
+        <p class="puzzle-turn" id="puzzle-turn"></p>
+        <div class="puzzle-board" id="puzzle-board"></div>
+        <div class="puzzle-result" id="puzzle-result"></div>
+        <div style="text-align:center; margin-top:12px; min-height:44px;">
+          <button class="btn btn-outline" id="btn-retry" onclick="retryPuzzle()" style="display:none; font-size:0.9rem; padding:10px 22px;">Retry</button>
+          <button class="btn btn-gold" id="btn-next" onclick="loadRandom()" style="display:none; font-size:0.9rem; padding:10px 22px;">Next puzzle</button>
+        </div>
+      </div>
+
+      <!-- Ad slot -->
+      <div class="ad-container" style="margin-top:32px;">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-8382831211800454"
+             data-ad-slot="auto"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>♞ Knightfall — free chess for Android</p>
+    <p><a href="index.html">Home</a> · <a href="leaderboard.html">Leaderboard</a> · <a href="privacy.html">Privacy Policy</a></p>
+  </footer>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // ── Chess piece symbols ──────────────────────────────────────────────────
+    const PIECE_SYMBOLS = {
+      K:'♔', Q:'♕', R:'♖', B:'♗', N:'♘', P:'♙',
+      k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟',
+    };
+
+    // ── FEN parser ───────────────────────────────────────────────────────────
+    function parseFen(fen) {
+      const board = new Array(64).fill(null);
+      const [placement, side] = fen.split(' ');
+      let sq = 56; // start at a8
+      for (const ch of placement) {
+        if (ch === '/') { sq -= 16; continue; }
+        if (ch >= '1' && ch <= '8') { sq += parseInt(ch); continue; }
+        board[sq++] = ch;
+      }
+      return { board, side };
+    }
+
+    function squareName(idx) {
+      const file = String.fromCharCode(97 + (idx % 8));
+      const rank = Math.floor(idx / 8) + 1;
+      return file + rank;
+    }
+
+    function squareIndex(name) {
+      const file = name.charCodeAt(0) - 97;
+      const rank = parseInt(name[1]) - 1;
+      return rank * 8 + file;
+    }
+
+    // ── Puzzle state ─────────────────────────────────────────────────────────
+    let puzzles = [];
+    let currentPuzzle = null;
+    let currentBoard = null;
+    let currentSide = 'w';
+    let moveIndex = 0;
+    let selectedSq = null;
+    let lastMoveSq = [null, null];
+
+    async function loadPuzzles() {
+      if (puzzles.length > 0) return puzzles;
+      const resp = await fetch('puzzles.json');
+      puzzles = await resp.json();
+      return puzzles;
+    }
+
+    async function loadDaily() {
+      await loadPuzzles();
+      const idx = Math.floor(Date.now() / 86400000) % puzzles.length;
+      startPuzzle(puzzles[idx]);
+    }
+
+    async function loadRandom() {
+      await loadPuzzles();
+      const idx = Math.floor(Math.random() * puzzles.length);
+      startPuzzle(puzzles[idx]);
+    }
+
+    function startPuzzle(puzzle) {
+      currentPuzzle = puzzle;
+      const { board, side } = parseFen(puzzle.fen);
+      currentBoard = [...board];
+      currentSide = side;
+      moveIndex = 0;
+      selectedSq = null;
+      lastMoveSq = [null, null];
+
+      // Play the opponent's setup move (moves[0])
+      if (puzzle.moves.length > 0) {
+        applyUci(currentBoard, puzzle.moves[0]);
+        lastMoveSq = [squareIndex(puzzle.moves[0].slice(0,2)), squareIndex(puzzle.moves[0].slice(2,4))];
+        currentSide = currentSide === 'w' ? 'b' : 'w';
+        moveIndex = 1;
+      }
+
+      const theme = puzzle.themes && puzzle.themes[0]
+        ? puzzle.themes[0].replace(/([A-Z])/g, ' $1').trim()
+        : 'Tactics';
+      document.getElementById('puzzle-info').textContent = `${theme} · Rating ${puzzle.rating}`;
+      document.getElementById('puzzle-result').textContent = '';
+      document.getElementById('puzzle-result').className = 'puzzle-result';
+      document.getElementById('btn-retry').style.display = 'none';
+      document.getElementById('btn-next').style.display = 'none';
+      renderBoard();
+      updateTurnLabel();
+    }
+
+    function applyUci(board, uci) {
+      const from = squareIndex(uci.slice(0, 2));
+      const to = squareIndex(uci.slice(2, 4));
+      const promo = uci[4];
+      let piece = board[from];
+      board[from] = null;
+      if (promo) {
+        piece = currentSide === 'w' ? promo.toUpperCase() : promo.toLowerCase();
+      }
+      // Handle castling: move rook too
+      if (piece === 'K' && Math.abs(from - to) === 2) {
+        if (to === 6)  { board[5] = board[7]; board[7] = null; }
+        if (to === 2)  { board[3] = board[0]; board[0] = null; }
+      }
+      if (piece === 'k' && Math.abs(from - to) === 2) {
+        if (to === 62) { board[61] = board[63]; board[63] = null; }
+        if (to === 58) { board[59] = board[56]; board[56] = null; }
+      }
+      board[to] = piece;
+    }
+
+    function renderBoard() {
+      const boardEl = document.getElementById('puzzle-board');
+      const isFlipped = currentPuzzle && currentSide === 'b' && moveIndex === 1
+        ? false  // after setup move, playerSide is currentSide
+        : false;
+      const playerIsBlack = currentPuzzle && moveIndex >= 1 && currentSide === 'b';
+
+      boardEl.innerHTML = '';
+      for (let visualRow = 7; visualRow >= 0; visualRow--) {
+        for (let visualCol = 0; visualCol < 8; visualCol++) {
+          const row = playerIsBlack ? 7 - visualRow : visualRow;
+          const col = playerIsBlack ? 7 - visualCol : visualCol;
+          const idx = row * 8 + col;
+          const isLight = (row + col) % 2 === 0;
+
+          const sq = document.createElement('div');
+          sq.className = 'sq ' + (isLight ? 'light' : 'dark');
+          if (selectedSq === idx) sq.classList.add('selected');
+          if (lastMoveSq[0] === idx || lastMoveSq[1] === idx) sq.classList.add('last-move');
+
+          const piece = currentBoard ? currentBoard[idx] : null;
+          if (piece) sq.textContent = PIECE_SYMBOLS[piece] || '';
+          sq.dataset.idx = idx;
+          sq.addEventListener('click', () => onSquareClick(idx));
+          boardEl.appendChild(sq);
+        }
+      }
+    }
+
+    function updateTurnLabel() {
+      if (!currentPuzzle) {
+        document.getElementById('puzzle-turn').textContent = '';
+        return;
+      }
+      const side = currentSide === 'w' ? 'White' : 'Black';
+      document.getElementById('puzzle-turn').textContent = `${side} to move`;
+    }
+
+    function onSquareClick(idx) {
+      if (!currentPuzzle || moveIndex >= currentPuzzle.moves.length) return;
+      const resultEl = document.getElementById('puzzle-result');
+      if (resultEl.classList.contains('success') || resultEl.classList.contains('fail')) return;
+
+      const piece = currentBoard[idx];
+      const playerIsWhite = currentSide === 'w';
+
+      if (selectedSq === null) {
+        if (!piece) return;
+        const isPlayerPiece = playerIsWhite ? piece === piece.toUpperCase() : piece === piece.toLowerCase();
+        if (!isPlayerPiece) return;
+        selectedSq = idx;
+        renderBoard();
+      } else {
+        if (idx === selectedSq) {
+          selectedSq = null;
+          renderBoard();
+          return;
+        }
+        // Re-select friendly piece
+        if (piece) {
+          const isPlayerPiece = playerIsWhite ? piece === piece.toUpperCase() : piece === piece.toLowerCase();
+          if (isPlayerPiece) {
+            selectedSq = idx;
+            renderBoard();
+            return;
+          }
+        }
+
+        const uci = squareName(selectedSq) + squareName(idx);
+        const expected = currentPuzzle.moves[moveIndex];
+        selectedSq = null;
+
+        if (expected && expected.startsWith(uci)) {
+          applyUci(currentBoard, expected);
+          lastMoveSq = [squareIndex(expected.slice(0,2)), squareIndex(expected.slice(2,4))];
+          currentSide = currentSide === 'w' ? 'b' : 'w';
+          moveIndex++;
+
+          if (moveIndex >= currentPuzzle.moves.length) {
+            renderBoard();
+            onPuzzleSolved();
+            return;
+          }
+
+          // Play opponent response
+          const opponentMove = currentPuzzle.moves[moveIndex];
+          setTimeout(() => {
+            applyUci(currentBoard, opponentMove);
+            lastMoveSq = [squareIndex(opponentMove.slice(0,2)), squareIndex(opponentMove.slice(2,4))];
+            currentSide = currentSide === 'w' ? 'b' : 'w';
+            moveIndex++;
+            if (moveIndex >= currentPuzzle.moves.length) {
+              renderBoard();
+              onPuzzleSolved();
+            } else {
+              renderBoard();
+              updateTurnLabel();
+            }
+          }, 350);
+        } else {
+          renderBoard();
+          resultEl.textContent = '✗ Incorrect — try again';
+          resultEl.className = 'puzzle-result fail';
+          document.getElementById('btn-retry').style.display = 'inline-block';
+          document.getElementById('btn-next').style.display = 'inline-block';
+          onPuzzleFailed();
+        }
+        renderBoard();
+      }
+    }
+
+    function retryPuzzle() {
+      if (currentPuzzle) startPuzzle(currentPuzzle);
+    }
+
+    function onPuzzleSolved() {
+      document.getElementById('puzzle-result').textContent = '✓ Correct!';
+      document.getElementById('puzzle-result').className = 'puzzle-result success';
+      document.getElementById('btn-next').style.display = 'inline-block';
+      savePuzzleSolved();
+    }
+
+    async function savePuzzleSolved() {
+      const user = typeof auth !== 'undefined' ? auth.currentUser : null;
+      if (!user || typeof db === 'undefined') return;
+      try {
+        const docRef = db.collection('users').doc(user.uid);
+        const snap = await docRef.get();
+        if (!snap.exists) return;
+        const data = snap.data();
+        const newStreak = (data.puzzleStreak || 0) + 1;
+        const bestStreak = Math.max(data.bestPuzzleStreak || 0, newStreak);
+        await docRef.update({
+          puzzlesSolved: firebase.firestore.FieldValue.increment(1),
+          puzzleStreak: newStreak,
+          bestPuzzleStreak: bestStreak,
+        });
+        // Check for new badges
+        const updatedSnap = await docRef.get();
+        const profile = { ...updatedSnap.data(), earnedBadges: updatedSnap.data().earnedBadges || [] };
+        const newBadges = checkBadges(profile);
+        if (newBadges.length > 0) {
+          await awardBadgesWeb(user.uid, newBadges);
+        }
+        await loadTrainingStats(user);
+      } catch (e) {
+        console.warn('Failed to save puzzle progress:', e);
+      }
+    }
+
+    async function onPuzzleFailed() {
+      const user = typeof auth !== 'undefined' ? auth.currentUser : null;
+      if (!user || typeof db === 'undefined') return;
+      try {
+        await db.collection('users').doc(user.uid).update({ puzzleStreak: 0 });
+      } catch (_) {}
+    }
+
+    async function loadTrainingStats(user) {
+      if (!user || typeof db === 'undefined') return;
+      try {
+        const snap = await db.collection('users').doc(user.uid).get();
+        if (!snap.exists) return;
+        const data = snap.data();
+        document.getElementById('stat-solved').textContent = data.puzzlesSolved || 0;
+        document.getElementById('stat-streak').textContent = data.bestPuzzleStreak || 0;
+        document.getElementById('training-stats').style.display = 'block';
+        const badges = data.earnedBadges || [];
+        if (badges.length > 0) {
+          document.getElementById('badge-section').style.display = 'block';
+          renderBadgeShelf(badges, document.getElementById('badge-shelf-container'));
+        }
+      } catch (e) {
+        console.warn('Failed to load training stats:', e);
+      }
+    }
+
+    window.onAuthChanged = async (user) => {
+      if (user) {
+        document.getElementById('auth-notice').style.display = 'none';
+        await loadTrainingStats(user);
+      } else {
+        document.getElementById('auth-notice').style.display = 'block';
+        document.getElementById('training-stats').style.display = 'none';
+      }
+      // Load the daily puzzle automatically
+      await loadDaily();
+    };
+  </script>
+</body>
+</html>

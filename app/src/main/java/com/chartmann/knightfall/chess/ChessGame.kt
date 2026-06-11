@@ -138,6 +138,11 @@ class ChessGame {
         played.clear()
     }
 
+    fun loadFromFen(fen: String) {
+        board.loadFromFen(fen)
+        played.clear()
+    }
+
     /** Rebuilds the game from a UCI move list (used for online sync). */
     fun loadFromUciMoves(moves: List<String>): Boolean {
         reset()

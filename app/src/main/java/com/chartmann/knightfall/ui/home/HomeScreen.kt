@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,6 +60,7 @@ fun HomeScreen(
     onLeaderboard: () -> Unit,
     onProfile: () -> Unit,
     onSettings: () -> Unit,
+    onTraining: () -> Unit,
 ) {
     val context = LocalContext.current
     Column(
@@ -113,6 +115,20 @@ fun HomeScreen(
             title = "Play a friend",
             subtitle = "Create a game code or enter one to join",
             onClick = onPlayFriend,
+        )
+
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "TRAIN",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(10.dp))
+        MenuCard(
+            icon = Icons.Filled.School,
+            title = "Puzzles & Training",
+            subtitle = "Solve tactical puzzles to sharpen your game and earn badges",
+            onClick = onTraining,
         )
 
         Spacer(Modifier.height(24.dp))

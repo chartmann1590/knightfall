@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♞</text></svg>">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8382831211800454"
+       crossorigin="anonymous"></script>
 </head>
 <body>
   <nav>
@@ -219,6 +221,15 @@
         ? `<div style="display: inline-block; background: rgba(224,122,107,0.15); color: var(--red); font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; margin-top: 8px;">PRIVATE (ONLY VISIBLE TO YOU)</div>`
         : `<div style="display: inline-block; background: rgba(111,191,115,0.15); color: var(--green); font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; margin-top: 8px;">PUBLIC PROFILE</div>`;
 
+      const badgeIds = p.earnedBadges || [];
+      const badgeHtml = badgeIds.length > 0
+        ? `<div class="badge-shelf" style="justify-content:center;">${badgeIds.map(id => {
+            const b = BADGE_MANIFEST[id];
+            if (!b) return '';
+            return `<span class="badge-chip earned" title="${escapeHtml(b.desc)}">${b.emoji} ${escapeHtml(b.name)}</span>`;
+          }).join('')}</div>`
+        : '';
+
       content.innerHTML = `
         <div class="profile-card" style="max-width: 540px; margin: 30px auto 20px;">
           <div class="avatar">${escapeHtml(p.username.charAt(0).toUpperCase())}</div>
@@ -232,7 +243,18 @@
             <div class="stat"><div class="num">${p.draws}</div><div class="lbl">Draws</div></div>
             <div class="stat"><div class="num">${p.bestWinStreak}</div><div class="lbl">Best streak</div></div>
           </div>
+          ${(p.puzzlesSolved || 0) > 0 ? `
+          <div class="stat-grid" style="margin-top:10px; grid-template-columns: repeat(2,1fr);">
+            <div class="stat"><div class="num">${p.puzzlesSolved || 0}</div><div class="lbl">Puzzles solved</div></div>
+            <div class="stat"><div class="num">${p.bestPuzzleStreak || 0}</div><div class="lbl">Best puzzle streak</div></div>
+          </div>` : ''}
           <p style="margin-top:22px; color:var(--smoke); font-size:0.9rem;">${gamesPlayed} online game${gamesPlayed === 1 ? '' : 's'} played</p>
+          ${badgeIds.length > 0 ? `<div style="margin-top:20px; text-align:left;"><div style="font-size:0.75rem;font-weight:700;letter-spacing:.1em;color:var(--smoke);margin-bottom:8px;">BADGES</div>${badgeHtml}</div>` : ''}
+          ${isMe ? `
+          <div style="margin-top: 24px; border-top: 1px solid rgba(232, 181, 74, 0.15); padding-top: 16px;">
+            <a href="delete-account.html" style="color: var(--red); font-size: 0.9rem; font-weight: 600;">Request Account Deletion</a>
+          </div>
+          ` : ''}
         </div>
 
         <div class="games-section" style="max-width: 540px; margin: 0 auto 40px; text-align: left;">

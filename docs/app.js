@@ -39,10 +39,12 @@ function updateNavbar(user) {
   const isPlay = path.includes('play.html');
   const isLb = path.includes('leaderboard.html');
   const isProfile = path.includes('profile.html');
+  const isTraining = path.includes('training.html');
 
   let html = `
     <a href="index.html" class="${isHome ? 'active' : ''}">Home</a>
     <a href="play.html" class="${isPlay ? 'active' : ''}">Play</a>
+    <a href="training.html" class="${isTraining ? 'active' : ''}">Training</a>
     <a href="leaderboard.html" class="${isLb ? 'active' : ''}">Leaderboard</a>
   `;
 
@@ -124,6 +126,11 @@ async function fetchPrivateProfile(uid) {
         draws: doc.data().draws ?? 0,
         bestWinStreak: doc.data().bestWinStreak ?? 0,
         isPublic: doc.data().isPublic ?? false,
+        earnedBadges: doc.data().earnedBadges ?? [],
+        puzzlesSolved: doc.data().puzzlesSolved ?? 0,
+        puzzleStreak: doc.data().puzzleStreak ?? 0,
+        bestPuzzleStreak: doc.data().bestPuzzleStreak ?? 0,
+        featuredBadges: doc.data().featuredBadges ?? [],
       };
     }
   } catch (e) {
@@ -155,6 +162,10 @@ async function fetchUserProfile(uid) {
           draws: doc.data().draws ?? 0,
           bestWinStreak: doc.data().bestWinStreak ?? 0,
           isPrivateView: false,
+          badgeCount: doc.data().badgeCount ?? 0,
+          featuredBadges: doc.data().featuredBadges ?? [],
+          puzzlesSolved: doc.data().puzzlesSolved ?? 0,
+          earnedBadges: doc.data().featuredBadges ?? [],
         };
       }
     } catch(e) {
@@ -230,6 +241,8 @@ function docToProfile(doc) {
     losses: fieldVal(f.losses) ?? 0,
     draws: fieldVal(f.draws) ?? 0,
     bestWinStreak: fieldVal(f.bestWinStreak) ?? 0,
+    badgeCount: fieldVal(f.badgeCount) ?? 0,
+    puzzlesSolved: fieldVal(f.puzzlesSolved) ?? 0,
   };
 }
 
@@ -267,4 +280,81 @@ function medal(rank) {
   if (rank === 2) return '🥈';
   if (rank === 3) return '🥉';
   return rank;
+}
+
+// Badge manifest — mirrors BadgeRegistry.kt
+const BADGE_MANIFEST = {
+  first_win:        { name: 'First Blood',        emoji: '⚔️',  desc: 'Win your first online game' },
+  ten_wins:         { name: 'Veteran',             emoji: '🎖️', desc: 'Win 10 online games' },
+  fifty_wins:       { name: 'Knight Errant',       emoji: '🏇',  desc: 'Win 50 online games' },
+  streak_3:         { name: 'On a Roll',           emoji: '🔥',  desc: 'Achieve a 3-game win streak' },
+  streak_10:        { name: 'Unstoppable',         emoji: '💫',  desc: 'Achieve a 10-game win streak' },
+  first_ai_win:     { name: 'Machine Slayer',      emoji: '🤖',  desc: 'Beat the AI for the first time' },
+  ai_wins_10:       { name: 'Engine Killer',       emoji: '⚡',  desc: 'Beat the AI 10 times' },
+  ai_wins_50:       { name: "Grandmaster's Bane",  emoji: '🏆',  desc: 'Beat the AI 50 times' },
+  elo_1400:         { name: 'Rising Star',         emoji: '⭐',  desc: 'Reach 1400 Elo' },
+  elo_1600:         { name: 'Expert',              emoji: '🌟',  desc: 'Reach 1600 Elo' },
+  elo_1800:         { name: 'Master Candidate',    emoji: '💎',  desc: 'Reach 1800 Elo' },
+  elo_2000:         { name: 'Master',              emoji: '👑',  desc: 'Reach 2000 Elo' },
+  first_puzzle:     { name: 'Tactician',           emoji: '🧩',  desc: 'Solve your first puzzle' },
+  puzzles_10:       { name: 'Puzzle Hunter',       emoji: '🔍',  desc: 'Solve 10 puzzles' },
+  puzzles_50:       { name: 'Puzzle Addict',       emoji: '🎯',  desc: 'Solve 50 puzzles' },
+  puzzles_100:      { name: 'Tactical Wizard',     emoji: '🪄',  desc: 'Solve 100 puzzles' },
+  puzzle_streak_5:  { name: 'Sharp Eye',           emoji: '👁️', desc: 'Solve 5 puzzles in a row' },
+  puzzle_streak_10: { name: 'Laser Focus',         emoji: '🎯',  desc: 'Solve 10 puzzles in a row' },
+  hundred_games:    { name: 'Battle Hardened',     emoji: '🛡️', desc: 'Play 100 games total' },
+  comeback:         { name: 'The Comeback Kid',    emoji: '💪',  desc: 'Win after suffering 10 losses' },
+};
+
+function renderBadgeShelf(badgeIds, containerEl) {
+  if (!badgeIds || badgeIds.length === 0) {
+    containerEl.innerHTML = '<p style="color:var(--smoke);font-size:0.9rem;">No badges earned yet. Keep playing!</p>';
+    return;
+  }
+  containerEl.innerHTML = `<div class="badge-shelf">${
+    badgeIds.map(id => {
+      const b = BADGE_MANIFEST[id];
+      if (!b) return '';
+      return `<span class="badge-chip earned" title="${escapeHtml(b.desc)}">
+        <span class="badge-emoji">${b.emoji}</span>
+        <span>${escapeHtml(b.name)}</span>
+      </span>`;
+    }).join('')
+  }</div>`;
+}
+
+// Client-side badge check — mirrors BadgeChecker.kt
+function checkBadges(profile) {
+  const earned = new Set(profile.earnedBadges || []);
+  const newBadges = [];
+  function award(id, cond) { if (cond && !earned.has(id)) newBadges.push(id); }
+  const total = (profile.wins || 0) + (profile.losses || 0) + (profile.draws || 0);
+  award('first_win',        (profile.wins || 0) >= 1);
+  award('ten_wins',         (profile.wins || 0) >= 10);
+  award('fifty_wins',       (profile.wins || 0) >= 50);
+  award('streak_3',         (profile.bestWinStreak || 0) >= 3);
+  award('streak_10',        (profile.bestWinStreak || 0) >= 10);
+  award('first_ai_win',     (profile.aiWins || 0) >= 1);
+  award('ai_wins_10',       (profile.aiWins || 0) >= 10);
+  award('ai_wins_50',       (profile.aiWins || 0) >= 50);
+  award('elo_1400',         (profile.elo || 0) >= 1400);
+  award('elo_1600',         (profile.elo || 0) >= 1600);
+  award('elo_1800',         (profile.elo || 0) >= 1800);
+  award('elo_2000',         (profile.elo || 0) >= 2000);
+  award('first_puzzle',     (profile.puzzlesSolved || 0) >= 1);
+  award('puzzles_10',       (profile.puzzlesSolved || 0) >= 10);
+  award('puzzles_50',       (profile.puzzlesSolved || 0) >= 50);
+  award('puzzles_100',      (profile.puzzlesSolved || 0) >= 100);
+  award('puzzle_streak_5',  (profile.bestPuzzleStreak || 0) >= 5);
+  award('puzzle_streak_10', (profile.bestPuzzleStreak || 0) >= 10);
+  award('hundred_games',    total >= 100);
+  award('comeback',         (profile.wins || 0) >= 1 && (profile.losses || 0) >= 10);
+  return newBadges;
+}
+
+async function awardBadgesWeb(uid, newBadgeIds) {
+  if (!newBadgeIds.length || typeof db === 'undefined') return;
+  await db.collection('users').doc(uid).update({
+    earnedBadges: firebase.firestore.FieldValue.arrayUnion(...newBadgeIds),
+  });
 }

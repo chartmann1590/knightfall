@@ -10,6 +10,7 @@ import com.chartmann.knightfall.data.AuthRepository
 import com.chartmann.knightfall.data.GameRepository
 import com.chartmann.knightfall.data.SettingsRepository
 import com.chartmann.knightfall.data.UserRepository
+import com.chartmann.knightfall.training.PuzzleRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,6 +28,7 @@ class AppContainer(app: KnightfallApp) {
     val sounds = com.chartmann.knightfall.ui.SoundManager(app)
     val feedbackRepo = com.chartmann.knightfall.data.feedback.BugReportRepo(app)
     val githubApi = com.chartmann.knightfall.data.feedback.GithubApi.create()
+    val puzzles = PuzzleRepository(app)
 }
 
 class KnightfallApp : Application() {

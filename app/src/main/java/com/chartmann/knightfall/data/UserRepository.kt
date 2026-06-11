@@ -1,8 +1,10 @@
 package com.chartmann.knightfall.data
 
+import com.chartmann.knightfall.badges.BadgeChecker
 import com.chartmann.knightfall.data.model.PublicProfile
 import com.chartmann.knightfall.data.model.UserProfile
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
@@ -68,8 +70,7 @@ class UserRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
                 ),
             )
         }.await()
-        val profile = getProfile(uid)
-        if (profile?.isPublic == true) syncPublicProfile(uid)
+        awardBadgesIfNew(uid)
     }
 
     suspend fun applyAiGameResult(uid: String, newElo: Int, won: Boolean, drew: Boolean) {
@@ -87,8 +88,40 @@ class UserRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
                 ),
             )
         }.await()
-        val profile = getProfile(uid)
-        if (profile?.isPublic == true) syncPublicProfile(uid)
+        awardBadgesIfNew(uid)
+    }
+
+    suspend fun recordPuzzleSolved(uid: String) {
+        db.runTransaction { tx ->
+            val snap = tx.get(userDoc(uid))
+            val profile = snap.toObject(UserProfile::class.java) ?: return@runTransaction
+            val newStreak = profile.puzzleStreak + 1
+            tx.update(
+                userDoc(uid),
+                mapOf(
+                    "puzzlesSolved" to profile.puzzlesSolved + 1,
+                    "puzzleStreak" to newStreak,
+                    "bestPuzzleStreak" to maxOf(profile.bestPuzzleStreak, newStreak),
+                ),
+            )
+        }.await()
+        awardBadgesIfNew(uid)
+    }
+
+    suspend fun recordPuzzleFailed(uid: String) {
+        userDoc(uid).update("puzzleStreak", 0).await()
+    }
+
+    suspend fun awardBadges(uid: String, newIds: List<String>) {
+        if (newIds.isEmpty()) return
+        userDoc(uid).update("earnedBadges", FieldValue.arrayUnion(*newIds.toTypedArray())).await()
+    }
+
+    private suspend fun awardBadgesIfNew(uid: String) {
+        val profile = getProfile(uid) ?: return
+        val newBadges = BadgeChecker.checkAll(profile)
+        if (newBadges.isNotEmpty()) awardBadges(uid, newBadges)
+        if (profile.isPublic) syncPublicProfile(uid)
     }
 
     /** Turns the public leaderboard profile on or off. */
@@ -109,6 +142,9 @@ class UserRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
             draws = p.draws,
             bestWinStreak = p.bestWinStreak,
             updatedAt = Timestamp.now(),
+            badgeCount = p.earnedBadges.size,
+            featuredBadges = p.earnedBadges.take(3),
+            puzzlesSolved = p.puzzlesSolved,
         )
         publicDoc(uid).set(mirror, SetOptions.merge()).await()
     }

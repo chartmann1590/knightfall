@@ -17,6 +17,10 @@ data class UserProfile(
     val aiWins: Int = 0,
     val isPublic: Boolean = false,
     val createdAt: Timestamp? = null,
+    val puzzlesSolved: Int = 0,
+    val puzzleStreak: Int = 0,
+    val bestPuzzleStreak: Int = 0,
+    val earnedBadges: List<String> = emptyList(),
 )
 
 /** Public mirror stored at publicProfiles/{uid} for opted-in players. */
@@ -30,6 +34,9 @@ data class PublicProfile(
     val draws: Int = 0,
     val bestWinStreak: Int = 0,
     val updatedAt: Timestamp? = null,
+    val badgeCount: Int = 0,
+    val featuredBadges: List<String> = emptyList(),
+    val puzzlesSolved: Int = 0,
 )
 
 object GameStatusValues {
