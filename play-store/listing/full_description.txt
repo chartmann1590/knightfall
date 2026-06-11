@@ -1,0 +1,29 @@
+Knightfall is a beautiful, feature-rich chess app that combines world-class engine play with on-device AI coaching — all in a sleek dark theme built for modern Android.
+
+♞ PLAY THE AI
+Challenge Stockfish 18 — the strongest chess engine on the planet — at six difficulty levels from casual beginner (~700 Elo) all the way up to Master (~3000 Elo). Whether you're learning your first opening or sharpening your endgame technique, there's a level that challenges you just enough.
+
+🧠 MEET YOUR COACH
+Download the optional on-device Gemma 4 AI coach (2.5 GB, one-time download, runs completely offline after that). Coach Gemma watches every game in real time and offers natural-language commentary after each move — no cloud required, no subscription, no data leaving your device. Ask her anything: "Why did I lose that pawn?" or "What's my best plan here?"
+
+🌐 PLAY ONLINE
+— Quick Match: instantly pair with a random opponent and play for your Elo rating.
+— Play a Friend: generate a 6-character invite code and share it anywhere. Your friend enters the code and the game begins — no account linking needed.
+— All online games are rated. Your Elo updates live after each game.
+
+🏆 LEADERBOARD & PROFILES
+Opt in to a public profile and compete on the global leaderboard. See your stats, win/loss/draw record, and game history any time. The leaderboard is also live on the Knightfall website.
+
+🔒 PRIVACY FIRST
+Play as a guest (no account required) or sign in with email. Every data-sharing feature — Crashlytics, Analytics, Performance Monitoring, push notifications — is individually opt-out in Settings. No personal data is shared by default until you explicitly choose to.
+
+✨ BEAUTIFUL & POLISHED
+— Material 3 dark chess theme
+— Smooth animated piece movement
+— Tap-to-move or drag-and-drop
+— Legal move dots, last-move highlight, check glow
+— Three board color themes
+— Move sounds and haptic feedback
+— Works offline (AI mode requires no internet)
+
+Knightfall is free. No ads. No pay-to-win. Just chess.

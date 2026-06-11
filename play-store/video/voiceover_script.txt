@@ -1,0 +1,27 @@
+KNIGHTFALL — PROMO VIDEO VOICEOVER SCRIPT
+==========================================
+Duration: ~39 seconds | Voice: Female (Zira) | Rate: +1
+
+[0:00 – 0:05 | Title card]
+"Introducing Knightfall. Beautiful chess on Android, powered by Stockfish and an on-device AI coach."
+
+[0:05 – 0:10 | Home screen]
+"From the home screen, choose how you want to play. Challenge the AI, find a quick match, or invite a friend."
+
+[0:10 – 0:16 | AI game board with Coach Gemma]
+"Play against Stockfish 18 at six difficulty levels. Your on-device Gemma coach watches every move and gives real coaching advice."
+
+[0:16 – 0:21 | Piece selected with legal move dots]
+"Legal move dots show exactly where each piece can go. Tap to move, or drag and drop — your choice."
+
+[0:21 – 0:26 | Coach panel]
+"Stuck? Ask Coach Gemma anything about your position. She runs fully offline — no cloud, no subscription."
+
+[0:26 – 0:31 | Settings screen]
+"Every privacy toggle is right here in Settings. Opt in or out of anything — crash reports, analytics, even your public profile."
+
+[0:31 – 0:35 | Leaderboard]
+"Compete on the global leaderboard. Your Elo rating updates after every rated match."
+
+[0:35 – 0:39 | Outro title card]
+"Knightfall. Free, no ads, plays offline. Download it now."
