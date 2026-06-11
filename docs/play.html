@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Play Chess — Knightfall</title>
+  <meta name="description" content="Play chess against AI or invite a friend. Works cross-platform with the Knightfall Android app via invite codes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♞</text></svg>">
+  <style>
+    /* ── board ── */
+    #board-grid {
+      display: grid;
+      grid-template-columns: repeat(8,1fr);
+      width: min(464px,calc(100vw - 32px));
+      height: min(464px,calc(100vw - 32px));
+      border: 2px solid rgba(74,55,40,.8);
+      border-radius: 3px;
+      overflow: hidden;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .sq {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .sq.light { background:#c4a882; }
+    .sq.dark  { background:#6b4226; }
+    .sq.sq-sel   { background:#f3f35f !important; }
+    .sq.sq-from  { background:#c8c84c !important; }
+    .sq.sq-to    { background:#adb42a !important; }
+    .sq.sq-check { background:#e07a6b !important; }
+    .piece {
+      font-size: clamp(22px,4.6vw,46px);
+      line-height: 1;
+      z-index: 2;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,.6));
+      pointer-events: none;
+    }
+    .piece.w { color:#f9f1e0; text-shadow:0 0 4px #000,0 0 1px #000; }
+    .piece.b { color:#1a1208; text-shadow:0 0 3px rgba(255,255,255,.25); }
+    .legal-dot {
+      position: absolute;
+      width: 32%; height: 32%;
+      border-radius: 50%;
+      background: rgba(0,0,0,.22);
+      pointer-events: none; z-index: 1;
+    }
+    .sq.cap-ring::after {
+      content:'';
+      position: absolute; inset: 3px;
+      border-radius: 50%;
+      border: 4px solid rgba(0,0,0,.22);
+      pointer-events: none; z-index: 1;
+    }
+    .coord {
+      position: absolute;
+      font-size: 10px; font-weight: 700;
+      opacity: .65; z-index: 3; pointer-events: none;
+    }
+    .coord.file { bottom:1px; right:3px; }
+    .coord.rank { top:1px; left:3px; }
+    .sq.light .coord { color:#6b4226; }
+    .sq.dark  .coord { color:#c4a882; }
+    @keyframes hint-pulse {
+      0%,100%{ opacity:1; }
+      40%,60%{ opacity:.35; filter:brightness(1.7); }
+    }
+    .hint-flash { animation: hint-pulse 1.6s ease; }
+
+    /* ── layout ── */
+    #game-wrap { max-width:960px; margin:0 auto; padding:24px 16px 48px; }
+    .game-layout {
+      display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap;
+    }
+    .board-col { flex-shrink:0; }
+    .side-col  { flex:1; min-width:170px; display:flex; flex-direction:column; gap:12px; }
+
+    /* ── player bars ── */
+    .pbar {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px;
+      background:var(--surface);
+      border-radius:10px;
+      border:1px solid rgba(232,181,74,.1);
+      margin-bottom:6px;
+    }
+    .pbar.active { border-color:rgba(232,181,74,.5); }
+    .pav {
+      width:34px; height:34px; border-radius:50%;
+      background:linear-gradient(135deg,var(--gold),var(--gold-deep));
+      color:#14110f;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:800; font-size:.88rem; flex-shrink:0;
+    }
+    .pav.opp { background:linear-gradient(135deg,#4a3728,#2a1a0f); color:var(--smoke); }
+    .pbar-name { font-weight:600; font-size:.93rem; }
+    .pbar-cap  { font-size:.72rem; color:var(--smoke); min-height:14px; }
+    .turn-pip {
+      width:8px; height:8px; border-radius:50%;
+      background:var(--gold); box-shadow:0 0 6px var(--gold);
+      margin-left:auto; flex-shrink:0;
+    }
+
+    /* ── board container (overlay parent) ── */
+    .board-wrap { position:relative; display:inline-block; }
+    #go-overlay {
+      display:none;
+      position:absolute; inset:0;
+      background:rgba(0,0,0,.78);
+      border-radius:3px;
+      flex-direction:column; align-items:center; justify-content:center; gap:14px;
+      z-index:20;
+    }
+    #go-overlay.show { display:flex; }
+    #go-msg {
+      font-family:'Playfair Display',serif;
+      font-size:1.65rem; font-weight:800;
+      color:var(--gold); text-align:center; padding:0 20px;
+    }
+    #promo-dlg {
+      display:none;
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      background:var(--surface);
+      border:2px solid rgba(232,181,74,.4);
+      border-radius:12px;
+      padding:18px 20px;
+      z-index:30;
+    }
+    #promo-dlg.show { display:block; }
+    .promo-row { display:flex; gap:8px; }
+    .promo-opt {
+      width:54px; height:54px; font-size:34px;
+      display:flex; align-items:center; justify-content:center;
+      background:var(--surface-2); border-radius:8px;
+      cursor:pointer; transition:background .12s;
+    }
+    .promo-opt:hover { background:rgba(232,181,74,.2); }
+
+    /* ── setup panels ── */
+    .panel {
+      max-width:390px; margin:36px auto;
+      padding:32px 28px;
+      background:var(--surface);
+      border-radius:var(--radius);
+      border:1px solid rgba(232,181,74,.12);
+    }
+    .panel h2 { font-size:1.5rem; margin-bottom:6px; text-align:center; }
+    .panel p.sub { color:var(--smoke); text-align:center; margin-bottom:18px; font-size:.9rem; }
+    .pbtns { display:flex; flex-direction:column; gap:10px; }
+    .pbtn {
+      width:100%; padding:13px 16px;
+      border-radius:10px; font-weight:600; font-size:.95rem;
+      border:none; cursor:pointer;
+      transition:opacity .15s, transform .1s;
+      font-family:inherit;
+    }
+    .pbtn:hover:not(:disabled) { opacity:.88; transform:translateY(-1px); }
+    .pbtn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+    .pbtn-gold  { background:linear-gradient(135deg,var(--gold),var(--gold-deep)); color:#14110f; }
+    .pbtn-dark  { background:var(--surface-2); color:var(--cream); border:1px solid rgba(232,181,74,.2)!important; }
+    .pbtn-ghost { background:transparent; color:var(--smoke); border:1px solid rgba(255,255,255,.1)!important; }
+    .pbtn-red   { background:rgba(224,122,107,.12); color:var(--red); border:1px solid rgba(224,122,107,.35)!important; }
+    label.lbl { display:block; font-size:.83rem; color:var(--smoke); margin:14px 0 5px; }
+    select.sel, input.inp {
+      width:100%; padding:11px 14px;
+      background:var(--surface-2);
+      border:1px solid rgba(232,181,74,.25);
+      border-radius:10px;
+      color:var(--cream); font-size:.93rem;
+      outline:none; font-family:inherit;
+    }
+    select.sel { cursor:pointer; }
+    input.inp  { letter-spacing:.1em; text-align:center; text-transform:uppercase; font-family:monospace; }
+    input.inp:focus { border-color:rgba(232,181,74,.55); }
+    .code-box {
+      background:var(--surface-2); border-radius:10px;
+      padding:18px; text-align:center; margin:12px 0;
+    }
+    .code-big {
+      font-size:2.4rem; font-weight:800;
+      letter-spacing:.22em; color:var(--gold); font-family:monospace;
+    }
+    .code-sub { font-size:.78rem; color:var(--smoke); margin-top:8px; }
+    .spinner {
+      width:28px; height:28px;
+      border:3px solid rgba(232,181,74,.2); border-top-color:var(--gold);
+      border-radius:50%; animation:spin .8s linear infinite;
+      margin:14px auto;
+    }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+    .err { color:var(--red); font-size:.85rem; text-align:center; margin-top:10px; }
+    .divider { text-align:center; color:var(--smoke); font-size:.82rem; margin:14px 0; }
+
+    /* ── in-game sidebar ── */
+    .status-bar {
+      background:var(--surface); border:1px solid rgba(232,181,74,.1);
+      border-radius:10px; padding:11px 15px;
+      font-weight:600; font-size:.9rem; text-align:center;
+    }
+    .move-log {
+      background:var(--surface); border:1px solid rgba(232,181,74,.1);
+      border-radius:10px; padding:10px 14px;
+      font-family:monospace; font-size:.8rem; color:var(--smoke);
+      max-height:210px; overflow-y:auto; line-height:1.7;
+    }
+    .mn { color:var(--gold); }
+    .ctrl-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .cbtn {
+      padding:8px 13px; border-radius:8px;
+      font-size:.83rem; font-weight:600;
+      cursor:pointer; border:none; transition:opacity .15s;
+      font-family:inherit;
+    }
+    .cbtn:hover { opacity:.8; }
+    .cbtn-ol  { background:transparent; border:1px solid rgba(232,181,74,.35)!important; color:var(--gold); }
+    .cbtn-red { background:rgba(224,122,107,.12); border:1px solid rgba(224,122,107,.3)!important; color:var(--red); }
+    .code-chip {
+      display:inline-flex; align-items:center; gap:8px;
+      background:rgba(232,181,74,.08); border:1px solid rgba(232,181,74,.3);
+      border-radius:8px; padding:6px 13px;
+      font-family:monospace; letter-spacing:.1em;
+      color:var(--gold); font-size:.83rem; cursor:pointer;
+    }
+    .code-chip:hover { background:rgba(232,181,74,.15); }
+
+    @media(max-width:580px){
+      .panel{ padding:24px 16px; }
+      .move-log{ max-height:120px; }
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html"><span class="knight">♞</span> Knightfall</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="play.html" class="active">Play</a>
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="https://github.com/chartmann1590/knightfall/releases/latest">Download App</a>
+    </div>
+  </div>
+</nav>
+
+<div id="game-wrap">
+
+  <!-- ── Auth ── -->
+  <div id="s-auth" class="panel">
+    <h2>♟ Play Chess</h2>
+    <p class="sub">Sign in to save your stats, or jump in as a guest.</p>
+    <div class="pbtns">
+      <button class="pbtn pbtn-gold" id="btn-google" onclick="doGoogle()">
+        <svg style="vertical-align:-3px;margin-right:8px" width="16" height="16" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.3 0 5.9 1.1 8 3l5.9-5.9C34.4 3.3 29.6 1 24 1 14.7 1 6.8 6.6 3.3 14.6l6.9 5.4C12 13.4 17.4 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.8-2.1 5.1-4.4 6.7l6.8 5.3c4-3.7 6.3-9.2 6.3-16z"/>
+          <path fill="#FBBC05" d="M10.2 28.6A15 15 0 0 1 9.5 24c0-1.6.3-3.1.7-4.6L3.3 14C1.2 18 0 22.4 0 27s1.2 9 3.3 13l6.9-5.4z"/>
+          <path fill="#34A853" d="M24 47c5.6 0 10.3-1.9 13.8-5.1l-6.8-5.3c-1.9 1.3-4.3 2-7 2-6.6 0-12-4-13.8-9.4l-6.9 5.4C6.8 41.4 14.7 47 24 47z"/>
+        </svg>
+        Continue with Google
+      </button>
+      <button class="pbtn pbtn-dark" onclick="doGuest()">♟️ Play as Guest</button>
+    </div>
+    <p id="auth-err" class="err" style="display:none"></p>
+  </div>
+
+  <!-- ── Mode ── -->
+  <div id="s-mode" class="panel" style="display:none">
+    <div style="text-align:center;margin-bottom:18px">
+      <div id="mode-av" style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#14110f;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;margin:0 auto 8px">?</div>
+      <div id="mode-name" style="font-weight:600">Guest</div>
+      <div id="mode-sub" style="font-size:.78rem;color:var(--smoke)">Guest · not rated</div>
+    </div>
+    <h2>Choose a game</h2>
+    <p class="sub"></p>
+    <div class="pbtns">
+      <button class="pbtn pbtn-gold" onclick="showAI()">🤖 Play vs AI</button>
+      <button class="pbtn pbtn-dark"  onclick="showOnline()">🌍 Play vs Friend (Invite Code)</button>
+    </div>
+  </div>
+
+  <!-- ── AI setup ── -->
+  <div id="s-ai" class="panel" style="display:none">
+    <h2>🤖 vs AI</h2>
+    <p class="sub">Stockfish runs right in your browser</p>
+    <label class="lbl">Difficulty</label>
+    <select class="sel" id="diff">
+      <option value="0,100">Beginner</option>
+      <option value="3,300">Casual (1200)</option>
+      <option value="7,600" selected>Intermediate (1600)</option>
+      <option value="11,1000">Advanced (1800)</option>
+      <option value="15,2000">Expert (2200)</option>
+      <option value="20,3000">Grandmaster</option>
+    </select>
+    <label class="lbl">Play as</label>
+    <select class="sel" id="color">
+      <option value="white">White (move first)</option>
+      <option value="black">Black</option>
+      <option value="random">Random</option>
+    </select>
+    <div class="pbtns" style="margin-top:18px">
+      <button class="pbtn pbtn-gold" onclick="startAI()">Start Game</button>
+      <button class="pbtn pbtn-ghost" onclick="showMode()">Back</button>
+    </div>
+  </div>
+
+  <!-- ── Online setup ── -->
+  <div id="s-online" class="panel" style="display:none">
+    <h2>🌍 Play vs Friend</h2>
+    <div id="ol-create">
+      <p class="sub">Create a game and share the code — works with the Android app too!</p>
+      <div class="pbtns">
+        <button class="pbtn pbtn-gold" onclick="doCreate()">Create Invite Game</button>
+      </div>
+      <div class="divider">— or join a game —</div>
+      <input class="inp" id="code-in" placeholder="XXXXXX" maxlength="6">
+      <div class="pbtns" style="margin-top:10px">
+        <button class="pbtn pbtn-dark" onclick="doJoin()">Join Game</button>
+      </div>
+      <p id="ol-err" class="err" style="display:none"></p>
+    </div>
+    <div id="ol-wait" style="display:none">
+      <div class="code-box">
+        <div class="code-big" id="wait-code">XXXXXX</div>
+        <div class="code-sub">Share this code · also works in the Knightfall app</div>
+      </div>
+      <div class="spinner"></div>
+      <p style="text-align:center;color:var(--smoke);font-size:.88rem">Waiting for opponent…</p>
+      <button class="pbtn pbtn-ghost" onclick="doCancel()" style="margin-top:12px">Cancel</button>
+    </div>
+    <button class="pbtn pbtn-ghost" id="ol-back" onclick="showMode()" style="margin-top:10px">Back</button>
+  </div>
+
+  <!-- ── Game board ── -->
+  <div id="s-game" style="display:none">
+    <div class="game-layout">
+      <div class="board-col">
+        <div class="pbar" id="pbar-top">
+          <div class="pav opp" id="top-av">?</div>
+          <div>
+            <div class="pbar-name" id="top-name">Opponent</div>
+            <div class="pbar-cap"  id="top-cap"></div>
+          </div>
+          <div class="turn-pip" id="top-pip" style="display:none"></div>
+        </div>
+        <div class="board-wrap">
+          <div id="board-grid"></div>
+          <div id="go-overlay">
+            <div id="go-msg"></div>
+            <button class="pbtn pbtn-gold" onclick="playAgain()" style="width:auto;padding:11px 26px">Play Again</button>
+            <button class="pbtn pbtn-ghost" onclick="showMode()" style="width:auto;padding:11px 26px">Main Menu</button>
+          </div>
+          <div id="promo-dlg">
+            <div style="font-size:.85rem;font-weight:600;text-align:center;color:var(--smoke);margin-bottom:10px">Promote to:</div>
+            <div class="promo-row" id="promo-row"></div>
+          </div>
+        </div>
+        <div class="pbar" id="pbar-bot" style="margin-top:6px">
+          <div class="pav" id="bot-av">?</div>
+          <div>
+            <div class="pbar-name" id="bot-name">You</div>
+            <div class="pbar-cap"  id="bot-cap"></div>
+          </div>
+          <div class="turn-pip" id="bot-pip" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="side-col">
+        <div class="status-bar" id="stat-bar">—</div>
+        <div class="move-log" id="move-log"><span style="opacity:.45">No moves yet</span></div>
+        <div class="ctrl-row">
+          <button class="cbtn cbtn-ol"  onclick="doFlip()">⇅ Flip</button>
+          <button class="cbtn cbtn-ol"  id="hint-btn" onclick="doHint()">💡 Hint</button>
+          <button class="cbtn cbtn-red" onclick="doResign()">⚑ Resign</button>
+        </div>
+        <div id="chip-wrap" style="display:none">
+          <div style="font-size:.78rem;color:var(--smoke);margin-bottom:4px">Game code</div>
+          <div class="code-chip" id="chip" onclick="copyChip()" title="Click to copy">●●●●●●</div>
+          <span style="font-size:.75rem;color:var(--smoke);margin-left:6px">tap to copy</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>♞ Knightfall — free chess for Android · <a href="https://github.com/chartmann1590/knightfall">GitHub</a></p>
+  <p style="margin-top:4px">Chess engine: Stockfish · Move validation: chess.js · Multiplayer: Firebase</p>
+</footer>
+
+<!-- chess.js 0.13 – sets window.Chess -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+<!-- Firebase 9 compat (traditional firebase.auth() / firebase.firestore() API) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+//  Firebase
+// ─────────────────────────────────────────────────────────────────
+firebase.initializeApp({
+  apiKey:            'AIzaSyA3CHXn6vYbYDcfLIJzj0wLDXXkfjvBB0o',
+  authDomain:        'knightfall-chess-app.firebaseapp.com',
+  projectId:         'knightfall-chess-app',
+  storageBucket:     'knightfall-chess-app.firebasestorage.app',
+  messagingSenderId: '439141758944',
+  appId:             '1:439141758944:web:7c1fe2a43cf84b80d41d85',
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+auth.onAuthStateChanged(user => { if (user) afterAuth(user); });
+
+// ─────────────────────────────────────────────────────────────────
+//  Piece map (Unicode chess symbols)
+// ─────────────────────────────────────────────────────────────────
+const P = {
+  wk:'♔',wq:'♕',wr:'♖',wb:'♗',wn:'♘',wp:'♙',
+  bk:'♚',bq:'♛',br:'♜',bb:'♝',bn:'♞',bp:'♟',
+};
+const FILES = 'abcdefgh';
+
+// ─────────────────────────────────────────────────────────────────
+//  Game state
+// ─────────────────────────────────────────────────────────────────
+let cg       = null;   // chess.js instance
+let flipped  = false;
+let selSq    = null;
+let legalSqs = [];
+let lastFrom = null, lastTo = null;
+let myColor  = 'white';
+let mode     = null;   // 'ai' | 'online'
+
+// AI
+let sf = null, sfReady = false, sfBusy = false;
+let sfSkill = 7, sfMs = 600, hintPending = false;
+
+// Online
+let gameId = null, invCode = null, unsub = null, synced = 0;
+
+// ─────────────────────────────────────────────────────────────────
+//  Section navigation
+// ─────────────────────────────────────────────────────────────────
+function show(id) {
+  ['s-auth','s-mode','s-ai','s-online','s-game'].forEach(s =>
+    document.getElementById(s).style.display = s === id ? '' : 'none');
+}
+function showMode() { cleanup(); show('s-mode'); }
+function showAI()   { show('s-ai'); }
+function showOnline() {
+  document.getElementById('ol-create').style.display = '';
+  document.getElementById('ol-wait').style.display   = 'none';
+  document.getElementById('ol-back').style.display   = '';
+  setErr('ol-err','');
+  document.getElementById('code-in').value = '';
+  show('s-online');
+}
+function setErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Auth
+// ─────────────────────────────────────────────────────────────────
+async function doGuest() {
+  setErr('auth-err','');
+  try { await auth.signInAnonymously(); }
+  catch(e) { setErr('auth-err', e.message); }
+}
+async function doGoogle() {
+  setErr('auth-err','');
+  document.getElementById('btn-google').disabled = true;
+  try {
+    await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  } catch(e) {
+    if (e.code !== 'auth/popup-closed-by-user')
+      setErr('auth-err','Google sign-in unavailable here — use Guest instead, or add chartmann1590.github.io to Firebase Authorized Domains.');
+  } finally {
+    document.getElementById('btn-google').disabled = false;
+  }
+}
+function afterAuth(user) {
+  const name = user.isAnonymous ? 'Guest' : (user.displayName || user.email || 'Player');
+  document.getElementById('mode-av').textContent   = name.charAt(0).toUpperCase();
+  document.getElementById('mode-name').textContent = name;
+  document.getElementById('mode-sub').textContent  = user.isAnonymous ? 'Guest · not rated' : 'Signed in';
+  show('s-mode');
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  AI game
+// ─────────────────────────────────────────────────────────────────
+function startAI() {
+  const [sk, ms] = document.getElementById('diff').value.split(',').map(Number);
+  sfSkill = sk; sfMs = ms;
+  let col = document.getElementById('color').value;
+  if (col === 'random') col = Math.random() < .5 ? 'white' : 'black';
+  myColor = col; flipped = col === 'black'; mode = 'ai';
+
+  initGame();
+  const diffLabel = document.getElementById('diff').selectedOptions[0].text;
+  const u = auth.currentUser;
+  const myName = u ? (u.isAnonymous ? 'Guest' : (u.displayName || u.email || 'You')) : 'You';
+  setBars(myName, 'AI · ' + diffLabel);
+  document.getElementById('hint-btn').style.display = '';
+  document.getElementById('chip-wrap').style.display = 'none';
+  show('s-game');
+  renderBoard(); updateStat(); updateLog();
+
+  loadStockfish(() => { if (col === 'black') setTimeout(aiMove, 500); });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Online game
+// ─────────────────────────────────────────────────────────────────
+function rndId(len, alpha) {
+  alpha = alpha || 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < len; i++) s += alpha[Math.floor(Math.random() * alpha.length)];
+  return s;
+}
+
+async function doCreate() {
+  const user = auth.currentUser; if (!user) return;
+  setErr('ol-err','');
+  const btn = document.querySelector('#ol-create .pbtn-gold');
+  btn.disabled = true;
+
+  const code = rndId(6);
+  const gid  = rndId(16, 'abcdefghijklmnopqrstuvwxyz0123456789');
+  try {
+    await db.collection('games').doc(gid).set({
+      whiteUid: user.uid, whiteName: user.displayName || 'Guest',
+      blackUid: null,     blackName: '',
+      whiteEloStart: 1200, blackEloStart: 1200,
+      status: 'waiting', moves: [],
+      rated: false, isPrivate: true,
+      inviteCode: code,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastMoveAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await db.collection('inviteCodes').doc(code).set({
+      gameId: gid, hostUid: user.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    invCode = code; gameId = gid; myColor = 'white';
+    document.getElementById('wait-code').textContent = code;
+    document.getElementById('ol-create').style.display = 'none';
+    document.getElementById('ol-wait').style.display   = '';
+    document.getElementById('ol-back').style.display   = 'none';
+
+    unsub = db.collection('games').doc(gid).onSnapshot(snap => {
+      if (!snap.exists) return;
+      const d = snap.data();
+      if (d.status === 'active' && d.blackUid) {
+        unsub && unsub(); unsub = null;
+        launchOnlineGame(gid, d);
+      }
+    });
+  } catch(e) {
+    setErr('ol-err', e.message);
+    btn.disabled = false;
+  }
+}
+
+async function doJoin() {
+  const user = auth.currentUser; if (!user) return;
+  const code = (document.getElementById('code-in').value || '').trim().toUpperCase();
+  if (code.length < 4) { setErr('ol-err','Enter the 6-character invite code'); return; }
+  setErr('ol-err','');
+  const btns = document.querySelectorAll('#ol-create .pbtn');
+  btns.forEach(b => b.disabled = true);
+
+  try {
+    const cSnap = await db.collection('inviteCodes').doc(code).get();
+    if (!cSnap.exists) { setErr('ol-err','Code not found — check and try again'); btns.forEach(b=>b.disabled=false); return; }
+    const gid = cSnap.data().gameId;
+    const gSnap = await db.collection('games').doc(gid).get();
+    if (!gSnap.exists || gSnap.data().status !== 'waiting') {
+      setErr('ol-err','Game no longer available'); btns.forEach(b=>b.disabled=false); return;
+    }
+    if (gSnap.data().whiteUid === user.uid) {
+      setErr('ol-err',"You can't join your own game"); btns.forEach(b=>b.disabled=false); return;
+    }
+    await db.collection('games').doc(gid).update({
+      blackUid: user.uid,
+      blackName: user.displayName || 'Guest',
+      status: 'active',
+      lastMoveAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await db.collection('inviteCodes').doc(code).delete();
+    gameId = gid; invCode = null; myColor = 'black'; flipped = true;
+    const d = (await db.collection('games').doc(gid).get()).data();
+    launchOnlineGame(gid, d);
+  } catch(e) {
+    setErr('ol-err', e.message);
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+function doCancel() {
+  if (unsub) { unsub(); unsub = null; }
+  if (gameId) { db.collection('games').doc(gameId).delete().catch(()=>{}); gameId = null; }
+  if (invCode){ db.collection('inviteCodes').doc(invCode).delete().catch(()=>{}); invCode = null; }
+  showOnline();
+}
+
+function launchOnlineGame(gid, data) {
+  if (unsub) { unsub(); unsub = null; }
+  mode = 'online'; flipped = myColor === 'black';
+  initGame();
+  if (data.moves && data.moves.length) {
+    data.moves.forEach(m => applyUCI(m));
+    synced = data.moves.length;
+  }
+  const u = auth.currentUser;
+  const myName = u ? (u.isAnonymous ? 'Guest' : (u.displayName || u.email || 'You')) : 'You';
+  const oppName = myColor === 'white'
+    ? (data.blackName  || 'Opponent')
+    : (data.whiteName  || 'Opponent');
+  setBars(myName, oppName);
+  document.getElementById('hint-btn').style.display = 'none';
+  if (invCode) {
+    document.getElementById('chip').textContent = invCode;
+    document.getElementById('chip-wrap').style.display = '';
+  } else {
+    document.getElementById('chip-wrap').style.display = 'none';
+  }
+  show('s-game');
+  renderBoard(); updateStat(); updateLog(); updateCaps();
+
+  unsub = db.collection('games').doc(gid).onSnapshot(snap => {
+    if (!snap.exists) return;
+    const d = snap.data();
+    const newMoves = (d.moves || []).slice(synced);
+    if (newMoves.length) {
+      newMoves.forEach(m => applyUCI(m));
+      synced = d.moves.length;
+      renderBoard(); updateStat(); updateLog(); updateCaps();
+    }
+    if (d.status === 'finished') onRemoteEnd(d.result);
+  });
+}
+
+function copyChip() {
+  const code = document.getElementById('chip').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    document.getElementById('chip').textContent = 'Copied!';
+    setTimeout(() => document.getElementById('chip').textContent = code, 1500);
+  }).catch(()=>{});
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Game init / cleanup
+// ─────────────────────────────────────────────────────────────────
+function initGame() {
+  cg = new Chess();
+  selSq = null; legalSqs = []; lastFrom = null; lastTo = null; synced = 0;
+  document.getElementById('go-overlay').classList.remove('show');
+}
+function cleanup() {
+  if (unsub) { unsub(); unsub = null; }
+  if (sf)    { sf.terminate(); sf = null; sfReady = false; sfBusy = false; }
+  cg = null; gameId = null; invCode = null; mode = null; hintPending = false;
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Stockfish (blob worker from CDN)
+// ─────────────────────────────────────────────────────────────────
+function loadStockfish(onReady) {
+  if (sf) { sfReady && onReady && onReady(); return; }
+  fetch('https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js')
+    .then(r => r.text()).then(src => {
+      const blob = new Blob([src], { type:'application/javascript' });
+      sf = new Worker(URL.createObjectURL(blob));
+      sf.onmessage = e => {
+        const line = e.data;
+        if (line === 'readyok') { sfReady = true; onReady && onReady(); }
+        if (line.startsWith('bestmove')) {
+          const mv = line.split(' ')[1];
+          if (mv && mv !== '(none)') {
+            if (hintPending) {
+              hintPending = false; sfBusy = false;
+              flashHint(mv.slice(0,2), mv.slice(2,4));
+            } else {
+              sfBusy = false;
+              applyAndSync(mv, 'ai');
+            }
+          } else { sfBusy = false; }
+        }
+      };
+      sf.postMessage('uci');
+      sf.postMessage('setoption name Skill Level value ' + sfSkill);
+      sf.postMessage('isready');
+    }).catch(err => { console.warn('Stockfish unavailable:', err); onReady && onReady(); });
+}
+
+function aiMove() {
+  if (!sf || !sfReady || !cg || cg.game_over() || sfBusy) return;
+  if (isMyTurn()) return;
+  sfBusy = true;
+  sf.postMessage('position fen ' + cg.fen());
+  sf.postMessage('go movetime ' + sfMs);
+}
+
+function doHint() {
+  if (!sf || !sfReady || sfBusy || !cg || cg.game_over() || mode !== 'ai' || !isMyTurn()) return;
+  hintPending = true; sfBusy = true;
+  sf.postMessage('position fen ' + cg.fen());
+  sf.postMessage('go movetime 800');
+}
+
+function flashHint(from, to) {
+  document.querySelector(`[data-sq="${from}"]`)?.classList.add('hint-flash');
+  document.querySelector(`[data-sq="${to}"]`)?.classList.add('hint-flash');
+  setTimeout(() => {
+    document.querySelector(`[data-sq="${from}"]`)?.classList.remove('hint-flash');
+    document.querySelector(`[data-sq="${to}"]`)?.classList.remove('hint-flash');
+  }, 1600);
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Board rendering
+// ─────────────────────────────────────────────────────────────────
+function renderBoard() {
+  const el = document.getElementById('board-grid');
+  el.innerHTML = '';
+  const pos = cg.board(); // [0]=rank8..[7]=rank1; each [0]=a..[7]=h
+  let checkSq = null;
+  if (cg.in_check()) {
+    const turn = cg.turn();
+    for (let r = 0; r < 8 && !checkSq; r++)
+      for (let f = 0; f < 8 && !checkSq; f++) {
+        const p = pos[r][f];
+        if (p && p.type === 'k' && p.color === turn)
+          checkSq = FILES[f] + (8 - r);
+      }
+  }
+
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const rank = flipped ? row + 1 : 8 - row;
+      const fi   = flipped ? 7 - col : col;
+      const sq   = FILES[fi] + rank;
+      const piece = pos[8 - rank][fi];
+      const isLight = (fi + rank) % 2 === 0;
+
+      const div = document.createElement('div');
+      div.className = 'sq ' + (isLight ? 'light' : 'dark');
+      div.dataset.sq = sq;
+
+      if (col === 0) {
+        const s = document.createElement('span');
+        s.className = 'coord rank'; s.textContent = rank;
+        div.appendChild(s);
+      }
+      if (row === 7) {
+        const s = document.createElement('span');
+        s.className = 'coord file'; s.textContent = FILES[fi];
+        div.appendChild(s);
+      }
+
+      if (sq === selSq)    div.classList.add('sq-sel');
+      else if (sq === lastFrom) div.classList.add('sq-from');
+      else if (sq === lastTo)   div.classList.add('sq-to');
+      if (sq === checkSq)  div.classList.add('sq-check');
+
+      if (legalSqs.includes(sq)) {
+        if (piece) div.classList.add('cap-ring');
+        else { const d = document.createElement('div'); d.className='legal-dot'; div.appendChild(d); }
+      }
+
+      if (piece) {
+        const sp = document.createElement('span');
+        sp.className = 'piece ' + piece.color;
+        sp.textContent = P[piece.color + piece.type];
+        div.appendChild(sp);
+      }
+
+      div.addEventListener('click', () => onSq(sq));
+      el.appendChild(div);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Click logic
+// ─────────────────────────────────────────────────────────────────
+function onSq(sq) {
+  if (!cg || cg.game_over() || !isMyTurn()) return;
+  if (selSq) {
+    if (legalSqs.includes(sq)) tryMove(selSq, sq);
+    else trySelect(sq);
+  } else trySelect(sq);
+}
+
+function trySelect(sq) {
+  const p = cg.get(sq);
+  if (p && p.color === cg.turn()) {
+    selSq    = sq;
+    legalSqs = cg.moves({ square: sq, verbose: true }).map(m => m.to);
+  } else { selSq = null; legalSqs = []; }
+  renderBoard();
+}
+
+function isMyTurn() {
+  return cg && cg.turn() === (myColor === 'white' ? 'w' : 'b');
+}
+
+function tryMove(from, to) {
+  const p = cg.get(from);
+  const isPromo = p && p.type === 'p' &&
+    ((p.color === 'w' && to[1] === '8') || (p.color === 'b' && to[1] === '1'));
+  isPromo ? openPromo(from, to) : applyAndSync(from + to, 'player');
+}
+
+function openPromo(from, to) {
+  const color = cg.turn();
+  const row = document.getElementById('promo-row');
+  row.innerHTML = '';
+  ['q','r','b','n'].forEach(pc => {
+    const d = document.createElement('div');
+    d.className = 'promo-opt';
+    d.textContent = P[color + pc];
+    d.onclick = () => {
+      document.getElementById('promo-dlg').classList.remove('show');
+      applyAndSync(from + to + pc, 'player');
+    };
+    row.appendChild(d);
+  });
+  document.getElementById('promo-dlg').classList.add('show');
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Move application
+// ─────────────────────────────────────────────────────────────────
+function applyUCI(uci) {
+  const from = uci.slice(0,2), to = uci.slice(2,4), promo = uci[4];
+  const m = cg.move({ from, to, promotion: promo || undefined });
+  if (m) { lastFrom = from; lastTo = to; }
+  return !!m;
+}
+
+function applyAndSync(uci, src) {
+  selSq = null; legalSqs = [];
+  if (!applyUCI(uci)) return;
+  renderBoard(); updateStat(); updateLog(); updateCaps();
+  if (src === 'player' && mode === 'online') { synced++; pushMove(uci); }
+  if (src === 'player' && mode === 'ai') { checkEnd(); if (!cg.game_over()) setTimeout(aiMove, 260); }
+  if (src === 'ai') checkEnd();
+}
+
+async function pushMove(uci) {
+  if (!gameId) return;
+  const update = {
+    moves: firebase.firestore.FieldValue.arrayUnion(uci),
+    lastMoveAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  if (cg.game_over()) {
+    update.status = 'finished';
+    const t = cg.turn();
+    update.result = cg.in_checkmate() ? (t==='w'?'black':'white') : 'draw';
+    update.endReason = cg.in_checkmate() ? 'checkmate' : 'draw';
+  }
+  try { await db.collection('games').doc(gameId).update(update); }
+  catch(e) { console.warn('pushMove:', e); }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Game over
+// ─────────────────────────────────────────────────────────────────
+function checkEnd() {
+  if (!cg.game_over()) return;
+  let msg;
+  if (cg.in_checkmate())             msg = (cg.turn()==='w'?'Black':'White') + ' wins by checkmate!';
+  else if (cg.in_stalemate())        msg = 'Stalemate — draw';
+  else if (cg.in_threefold_repetition()) msg = 'Draw by repetition';
+  else if (cg.insufficient_material())   msg = 'Draw — insufficient material';
+  else                               msg = 'Draw';
+  endGame(msg);
+}
+
+function onRemoteEnd(result) {
+  if (!result) return;
+  endGame(result === 'draw' ? 'Draw'
+    : result === myColor ? 'You win! 🎉' : 'Opponent wins');
+}
+
+function endGame(msg) {
+  document.getElementById('go-msg').textContent = msg;
+  document.getElementById('go-overlay').classList.add('show');
+}
+
+function doResign() {
+  if (!cg || cg.game_over()) return;
+  if (!confirm('Resign this game?')) return;
+  if (mode === 'online' && gameId) {
+    db.collection('games').doc(gameId).update({
+      status: 'finished',
+      result: myColor === 'white' ? 'black' : 'white',
+      endReason: 'resignation',
+      lastMoveAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(()=>{});
+  }
+  endGame(myColor === 'white' ? 'You resigned. Black wins.' : 'You resigned. White wins.');
+}
+
+function playAgain() {
+  document.getElementById('go-overlay').classList.remove('show');
+  if (mode === 'ai') startAI();
+  else { cleanup(); showMode(); }
+}
+
+function doFlip() { flipped = !flipped; renderBoard(); }
+
+// ─────────────────────────────────────────────────────────────────
+//  UI updates
+// ─────────────────────────────────────────────────────────────────
+function updateStat() {
+  if (!cg) return;
+  const el = document.getElementById('stat-bar');
+  if (cg.game_over()) { el.textContent = '♟ Game over'; return; }
+  const my = isMyTurn(), chk = cg.in_check();
+  if (mode === 'ai')
+    el.textContent = my ? (chk?'⚠ Check — your move':'Your move')
+                        : (chk?'⚠ Check — AI thinking…':'AI is thinking…');
+  else
+    el.textContent = my ? (chk?'⚠ Check — your move':'Your move')
+                        : (chk?"⚠ Opponent's king in check":'Waiting for opponent…');
+
+  const whiteT = cg.turn() === 'w', botWhite = myColor === 'white';
+  document.getElementById('bot-pip').style.display  = whiteT === botWhite  ? '' : 'none';
+  document.getElementById('top-pip').style.display  = whiteT !== botWhite  ? '' : 'none';
+  document.getElementById('pbar-bot').classList.toggle('active', whiteT === botWhite);
+  document.getElementById('pbar-top').classList.toggle('active', whiteT !== botWhite);
+}
+
+function updateLog() {
+  if (!cg) return;
+  const hist = cg.history();
+  if (!hist.length) { document.getElementById('move-log').innerHTML = '<span style="opacity:.45">No moves yet</span>'; return; }
+  let html = '';
+  for (let i = 0; i < hist.length; i += 2) {
+    html += `<span class="mn">${Math.floor(i/2)+1}.</span>${hist[i]}${hist[i+1]?' '+hist[i+1]:''}  `;
+  }
+  const el = document.getElementById('move-log');
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+}
+
+function updateCaps() {
+  if (!cg) return;
+  const fen = cg.fen().split(' ')[0];
+  const cnt = {P:0,N:0,B:0,R:0,Q:0,p:0,n:0,b:0,r:0,q:0};
+  for (const c of fen) if (c in cnt) cnt[c]++;
+  const st = {P:8,N:2,B:2,R:2,Q:1};
+  let wCap = '', bCap = '';
+  for (const [pc, s] of Object.entries(st)) {
+    const lp = pc.toLowerCase();
+    for (let i=0;i<Math.max(0,s-cnt[pc]);i++) wCap += P['w'+lp];  // white pieces taken by black
+    for (let i=0;i<Math.max(0,s-cnt[lp]);i++) bCap += P['b'+lp];  // black pieces taken by white
+  }
+  document.getElementById('bot-cap').textContent = myColor==='white' ? bCap : wCap;
+  document.getElementById('top-cap').textContent = myColor==='white' ? wCap : bCap;
+}
+
+function setBars(myName, oppName) {
+  document.getElementById('bot-av').textContent   = myName.charAt(0).toUpperCase();
+  document.getElementById('bot-name').textContent = myName;
+  document.getElementById('top-av').textContent   = oppName.charAt(0).toUpperCase();
+  document.getElementById('top-name').textContent = oppName;
+}
+</script>
+</body>
+</html>

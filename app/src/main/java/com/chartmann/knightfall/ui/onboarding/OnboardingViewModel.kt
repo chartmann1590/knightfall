@@ -43,6 +43,28 @@ class OnboardingViewModel(private val container: AppContainer) : ViewModel() {
         _state.value = _state.value.copy(isSignIn = signIn)
     }
 
+    fun signInWithGoogle(idToken: String) {
+        runAuth {
+            val isGuest = container.auth.isAnonymous
+            if (isGuest) {
+                // Keep the existing anonymous uid + any stats by linking
+                try {
+                    container.auth.linkAnonymousToGoogle(idToken)
+                } catch (_: Exception) {
+                    // Account already exists — sign in directly instead
+                    container.auth.signInWithGoogle(idToken)
+                }
+            } else {
+                container.auth.signInWithGoogle(idToken)
+            }
+            val uid = container.auth.uid ?: error("Sign-in succeeded but uid is null")
+            val profile = container.users.getProfile(uid)
+            _state.value = _state.value.copy(
+                step = if (profile != null) OnboardingStep.COACH else OnboardingStep.USERNAME,
+            )
+        }
+    }
+
     fun continueAsGuest() {
         runAuth {
             container.auth.signInAnonymously()

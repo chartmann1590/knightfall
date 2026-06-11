@@ -39,11 +39,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
 import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.coach.CoachModelManager
 import com.chartmann.knightfall.data.SettingsRepository
 import com.chartmann.knightfall.ui.board.BoardTheme
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +62,7 @@ fun SettingsScreen(
     onSignedOut: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val repo = container.settings
     val modelState by container.modelManager.stateFlow()
         .collectAsState(initial = CoachModelManager.ModelState.NotDownloaded)
@@ -204,6 +211,37 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                val credManager = CredentialManager.create(context)
+                                val googleOption = GetGoogleIdOption.Builder()
+                                    .setFilterByAuthorizedAccounts(false)
+                                    .setServerClientId("439141758944-kjo00p5e09efjptca8ibjm2fkclfrioh.apps.googleusercontent.com")
+                                    .setAutoSelectEnabled(false)
+                                    .build()
+                                val request = GetCredentialRequest.Builder()
+                                    .addCredentialOption(googleOption)
+                                    .build()
+                                val result = credManager.getCredential(context, request)
+                                val cred = result.credential
+                                if (cred is CustomCredential &&
+                                    cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                                ) {
+                                    val tokenCred = GoogleIdTokenCredential.createFrom(cred.data)
+                                    try {
+                                        container.auth.linkAnonymousToGoogle(tokenCred.idToken)
+                                    } catch (_: Exception) {
+                                        container.auth.signInWithGoogle(tokenCred.idToken)
+                                    }
+                                }
+                            } catch (_: Exception) { }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Link Google account") }
                 Spacer(Modifier.height(10.dp))
             }
             OutlinedButton(

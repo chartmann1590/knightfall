@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -25,17 +26,25 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.R
 import com.chartmann.knightfall.coach.CoachModelManager
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.launch
 
 @Composable
 fun OnboardingScreen(
@@ -95,8 +104,14 @@ private fun Welcome(onNext: () -> Unit) {
     }
 }
 
+private const val WEB_CLIENT_ID =
+    "439141758944-kjo00p5e09efjptca8ibjm2fkclfrioh.apps.googleusercontent.com"
+
 @Composable
 private fun AccountChoice(vm: OnboardingViewModel, state: OnboardingState) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     Text("How do you want to play?", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(8.dp))
     Text(
@@ -106,6 +121,42 @@ private fun AccountChoice(vm: OnboardingViewModel, state: OnboardingState) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.height(28.dp))
+
+    // Google Sign-In button
+    Button(
+        onClick = {
+            scope.launch {
+                try {
+                    val credManager = CredentialManager.create(context)
+                    val googleOption = GetGoogleIdOption.Builder()
+                        .setFilterByAuthorizedAccounts(false)
+                        .setServerClientId(WEB_CLIENT_ID)
+                        .setAutoSelectEnabled(false)
+                        .build()
+                    val request = GetCredentialRequest.Builder()
+                        .addCredentialOption(googleOption)
+                        .build()
+                    val result = credManager.getCredential(context, request)
+                    val credential = result.credential
+                    if (credential is CustomCredential &&
+                        credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                    ) {
+                        val tokenCred = GoogleIdTokenCredential.createFrom(credential.data)
+                        vm.signInWithGoogle(tokenCred.idToken)
+                    }
+                } catch (e: Exception) {
+                    // User cancelled or no Google account — silently do nothing
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !state.working,
+    ) { Text("Continue with Google") }
+
+    Spacer(Modifier.height(12.dp))
+    HorizontalDivider()
+    Spacer(Modifier.height(12.dp))
+
     Button(
         onClick = {
             vm.setSignInMode(false)

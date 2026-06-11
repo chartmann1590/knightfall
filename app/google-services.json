@@ -1,4 +1,4 @@
-{
+﻿{
   "project_info": {
     "project_number": "439141758944",
     "project_id": "knightfall-chess-app",
@@ -12,7 +12,28 @@
           "package_name": "com.chartmann.knightfall"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "439141758944-3um4djcdv3d4uosa3mtbs1gnehvc7vtl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chartmann.knightfall",
+            "certificate_hash": "f5969a36cc064a2b260b9fd58eed02b4f95a6366"
+          }
+        },
+        {
+          "client_id": "439141758944-q5349vm3pibvlfre28is91qa02b9hiar.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chartmann.knightfall",
+            "certificate_hash": "ad066b11eecddf89aa9246850e03eec1717a2bcc"
+          }
+        },
+        {
+          "client_id": "439141758944-kjo00p5e09efjptca8ibjm2fkclfrioh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCM6V5eOm7Po54odRYWPjuygV_kFyHeqhw"
@@ -20,7 +41,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "439141758944-kjo00p5e09efjptca8ibjm2fkclfrioh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
