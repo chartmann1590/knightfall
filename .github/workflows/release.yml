@@ -25,6 +25,10 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Run unit tests
+        env:
+          GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
+          GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest
