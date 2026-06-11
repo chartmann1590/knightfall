@@ -94,11 +94,16 @@ fun SettingsScreen(
             ToggleRow(
                 title = "Public profile",
                 subtitle = "Show your name, rating and stats on the in-app leaderboard and the Knightfall website",
-                checked = settings?.publicProfile ?: false,
+                checked = if (isAnonymous) false else (settings?.publicProfile ?: false),
+                enabled = !isAnonymous,
                 onChange = { on ->
                     scope.launch {
-                        repo.setPublicProfile(on)
-                        container.auth.uid?.let { container.users.setPublic(it, on) }
+                        try {
+                            repo.setPublicProfile(on)
+                            container.auth.uid?.let { container.users.setPublic(it, on) }
+                        } catch (e: Exception) {
+                            repo.setPublicProfile(!on)
+                        }
                     }
                 },
             )
@@ -320,14 +325,16 @@ private fun ToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onChange: (Boolean) -> Unit,
 ) {
+    val alpha = if (enabled) 1f else 0.5f
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = alpha),
         tonalElevation = 1.dp,
     ) {
         Row(
@@ -335,15 +342,19 @@ private fun ToggleRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
+                )
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
                 )
             }
             Spacer(Modifier.width(10.dp))
-            Switch(checked = checked, onCheckedChange = onChange)
+            Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
         }
     }
 }

@@ -5,11 +5,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.coach.CoachModelManager
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 enum class OnboardingStep { WELCOME, ACCOUNT, EMAIL_FORM, USERNAME, COACH, DONE }
 
@@ -51,7 +53,11 @@ class OnboardingViewModel(private val container: AppContainer) : ViewModel() {
                 try {
                     container.auth.linkAnonymousToGoogle(idToken)
                 } catch (_: Exception) {
-                    // Account already exists — sign in directly instead
+                    // Account already exists — flush any pending Firestore writes for the
+                    // anonymous UID before switching auth; otherwise the SDK may replay them
+                    // under the new UID and receive PERMISSION_DENIED, which escapes to the
+                    // main thread due to Firebase SDK bug #6443.
+                    try { FirebaseFirestore.getInstance().waitForPendingWrites().await() } catch (_: Exception) {}
                     container.auth.signInWithGoogle(idToken)
                 }
             } else {
