@@ -44,6 +44,55 @@ import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.PieceType
 import com.github.bhlangonijr.chesslib.Side
 
+@Composable
+fun ClockBar(
+    whiteTimeMs: Long,
+    blackTimeMs: Long,
+    sideToMove: Side,
+    playerSide: Side,
+    gameOngoing: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val opponentTimeMs = if (playerSide == Side.WHITE) blackTimeMs else whiteTimeMs
+        val myTimeMs = if (playerSide == Side.WHITE) whiteTimeMs else blackTimeMs
+        val opponentActive = sideToMove != playerSide && gameOngoing
+        val myActive = sideToMove == playerSide && gameOngoing
+
+        ClockChip(opponentTimeMs, opponentActive)
+        ClockChip(myTimeMs, myActive)
+    }
+}
+
+@Composable
+private fun ClockChip(timeMs: Long, isActive: Boolean) {
+    val low = timeMs in 1L..29_999L
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = when {
+            low -> MaterialTheme.colorScheme.errorContainer
+            isActive -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        },
+    ) {
+        Text(
+            text = formatClock(timeMs),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = when {
+                low -> MaterialTheme.colorScheme.onErrorContainer
+                isActive -> MaterialTheme.colorScheme.onPrimaryContainer
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
+    }
+}
+
 /** Avatar dot + name + rating + captured pieces for one player. */
 @Composable
 fun PlayerBar(
@@ -53,7 +102,6 @@ fun PlayerBar(
     capturedPieces: List<PieceType>,
     capturedSide: Side,
     materialAdvantage: Int,
-    timeMs: Long? = null,
     avatarColor: Color = Gold,
     modifier: Modifier = Modifier,
 ) {
@@ -97,24 +145,6 @@ fun PlayerBar(
                 }
             }
             CapturedRow(capturedPieces, capturedSide, materialAdvantage)
-            if (timeMs != null) {
-                Spacer(Modifier.width(8.dp))
-                val lowTime = timeMs in 1..29_999
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = if (lowTime) MaterialTheme.colorScheme.errorContainer
-                            else MaterialTheme.colorScheme.surfaceVariant,
-                ) {
-                    Text(
-                        text = formatClock(timeMs),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (lowTime) MaterialTheme.colorScheme.onErrorContainer
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
-                }
-            }
             if (isTurn) {
                 Spacer(Modifier.width(6.dp))
                 Box(

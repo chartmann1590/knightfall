@@ -135,9 +135,16 @@ fun AiGameScreen(
                 capturedPieces = state.capturedByAi,
                 capturedSide = state.playerSide,
                 materialAdvantage = 0,
-                timeMs = if (state.playerSide == Side.WHITE) state.blackTimeMs else state.whiteTimeMs,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
+            ClockBar(
+                whiteTimeMs = state.whiteTimeMs,
+                blackTimeMs = state.blackTimeMs,
+                sideToMove = state.sideToMove,
+                playerSide = state.playerSide,
+                gameOngoing = state.status == GameStatus.ONGOING && state.outcome == null,
+            )
+            Spacer(Modifier.height(4.dp))
 
             ChessBoard(
                 position = state.position,
@@ -160,7 +167,6 @@ fun AiGameScreen(
                 capturedPieces = state.capturedByPlayer,
                 capturedSide = if (state.playerSide == Side.WHITE) Side.BLACK else Side.WHITE,
                 materialAdvantage = 0,
-                timeMs = if (state.playerSide == Side.WHITE) state.whiteTimeMs else state.blackTimeMs,
             )
 
             AnimatedVisibility(visible = state.outcome != null) {

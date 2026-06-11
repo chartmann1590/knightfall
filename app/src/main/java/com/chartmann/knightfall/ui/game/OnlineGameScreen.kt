@@ -160,9 +160,16 @@ fun OnlineGameScreen(
                 capturedPieces = state.capturedByOpponent,
                 capturedSide = state.mySide,
                 materialAdvantage = 0,
-                timeMs = if (state.mySide == Side.WHITE) state.blackTimeMs else state.whiteTimeMs,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
+            ClockBar(
+                whiteTimeMs = state.whiteTimeMs,
+                blackTimeMs = state.blackTimeMs,
+                sideToMove = state.sideToMove,
+                playerSide = state.mySide,
+                gameOngoing = !state.finished && !state.waitingForOpponent,
+            )
+            Spacer(Modifier.height(4.dp))
 
             ChessBoard(
                 position = state.position,
@@ -185,7 +192,6 @@ fun OnlineGameScreen(
                 capturedPieces = state.capturedByMe,
                 capturedSide = state.mySide.opposite(),
                 materialAdvantage = 0,
-                timeMs = if (state.mySide == Side.WHITE) state.whiteTimeMs else state.blackTimeMs,
             )
 
             AnimatedVisibility(visible = state.opponentIdle && !state.finished) {
