@@ -51,16 +51,20 @@ service cloud.firestore {
               || resource.data.blackUid == request.auth.uid);
       }
 
+      function seatEmpty(key) {
+        return !(key in resource.data) || resource.data[key] == null;
+      }
+
       function isJoiningOpenSeat() {
         return signedIn()
           && resource.data.status == 'waiting'
           && request.resource.data.status == 'active'
           && (
-            (resource.data.blackUid == null
+            (seatEmpty('blackUid')
               && request.resource.data.blackUid == request.auth.uid
               && request.resource.data.whiteUid == resource.data.whiteUid)
             ||
-            (resource.data.whiteUid == null
+            (seatEmpty('whiteUid')
               && request.resource.data.whiteUid == request.auth.uid
               && request.resource.data.blackUid == resource.data.blackUid)
           );
