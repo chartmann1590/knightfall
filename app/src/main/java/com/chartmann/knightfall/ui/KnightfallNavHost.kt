@@ -157,6 +157,11 @@ fun KnightfallNavHost() {
                 gameId = gameId,
                 boardTheme = boardTheme,
                 onExit = { navController.popBackStack("home", inclusive = false) },
+                onPlayAi = {
+                    navController.navigate("ai-setup") {
+                        popUpTo("home")
+                    }
+                },
             )
         }
 

@@ -37,7 +37,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +51,7 @@ import com.chartmann.knightfall.data.model.GameStatusValues
 import com.chartmann.knightfall.ui.board.BoardTheme
 import com.chartmann.knightfall.ui.board.ChessBoard
 import com.github.bhlangonijr.chesslib.Side
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +60,7 @@ fun OnlineGameScreen(
     gameId: String,
     boardTheme: BoardTheme,
     onExit: () -> Unit,
+    onPlayAi: () -> Unit,
 ) {
     val vm: OnlineGameViewModel = viewModel(
         key = "online-$gameId",
@@ -65,6 +69,20 @@ fun OnlineGameScreen(
     val state by vm.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val myUid = container.auth.uid ?: ""
+
+    var showAiOfferDialog by remember { mutableStateOf(false) }
+    var hasDeclinedAiOffer by remember { mutableStateOf(false) }
+
+    val showDialogTrigger = state.waitingForOpponent && state.game != null && state.game?.inviteCode == null
+
+    LaunchedEffect(showDialogTrigger, hasDeclinedAiOffer) {
+        if (showDialogTrigger && !hasDeclinedAiOffer) {
+            delay(60_000L)
+            showAiOfferDialog = true
+        } else {
+            showAiOfferDialog = false
+        }
+    }
 
     LaunchedEffect(state.error) {
         state.error?.let { snackbar.showSnackbar(it) }
@@ -216,6 +234,34 @@ fun OnlineGameScreen(
             dismissButton = {
                 OutlinedButton(onClick = { vm.respondToDraw(false) }) { Text("Decline") }
             },
+        )
+    }
+
+    if (showAiOfferDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                hasDeclinedAiOffer = true
+                showAiOfferDialog = false
+            },
+            title = { Text("No opponent found") },
+            text = { Text("Would you like to play against the AI instead?") },
+            confirmButton = {
+                Button(onClick = {
+                    showAiOfferDialog = false
+                    vm.cancelWaiting()
+                    onPlayAi()
+                }) {
+                    Text("Play AI")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    hasDeclinedAiOffer = true
+                    showAiOfferDialog = false
+                }) {
+                    Text("Keep Waiting")
+                }
+            }
         )
     }
 

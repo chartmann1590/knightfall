@@ -1,1 +1,1 @@
-Play chess against Stockfish AI with an on-device Gemma 4 coach — plus rated online matches.
+Play chess against Stockfish AI with Gemma 4 coaching, online, or on the web!
