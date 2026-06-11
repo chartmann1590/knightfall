@@ -43,6 +43,7 @@ class KnightfallApp : Application() {
         container = AppContainer(this)
         createNotificationChannels()
         appScope.launch { settings.applyPrivacyChoices() }
+        com.chartmann.knightfall.ads.AdManager.initialize(this)
     }
 
     private fun createNotificationChannels() {

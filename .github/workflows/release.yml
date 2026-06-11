@@ -29,6 +29,10 @@ jobs:
           GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
           GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
           GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
+          ADMOB_INTERSTITIAL_AD_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest
@@ -46,6 +50,10 @@ jobs:
           GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
           GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
           GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
+          ADMOB_INTERSTITIAL_AD_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
         run: |
           ./gradlew assembleRelease bundleRelease \
             -PversionCode=$((100 + ${{ github.run_number }})) \

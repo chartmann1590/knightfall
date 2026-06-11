@@ -104,8 +104,7 @@ private fun Welcome(onNext: () -> Unit) {
     }
 }
 
-private const val WEB_CLIENT_ID =
-    "439141758944-kjo00p5e09efjptca8ibjm2fkclfrioh.apps.googleusercontent.com"
+private val WEB_CLIENT_ID = com.chartmann.knightfall.BuildConfig.GOOGLE_CLIENT_ID
 
 @Composable
 private fun AccountChoice(vm: OnboardingViewModel, state: OnboardingState) {

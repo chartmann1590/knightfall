@@ -44,6 +44,8 @@ import com.chartmann.knightfall.ui.profile.ProfileScreen
 import com.chartmann.knightfall.ui.session.SessionViewModel
 import com.chartmann.knightfall.ui.settings.SettingsScreen
 import com.github.bhlangonijr.chesslib.Side
+import com.chartmann.knightfall.ads.AdManager
+import com.chartmann.knightfall.ads.findActivity
 
 @Composable
 fun KnightfallNavHost() {
@@ -93,11 +95,20 @@ fun KnightfallNavHost() {
         }
 
         composable("ai-setup") {
+            val activity = LocalContext.current.findActivity()
             AiSetupScreen(
                 onBack = { navController.popBackStack() },
                 onStart = { difficulty, side ->
-                    navController.navigate("game/ai/${difficulty.name}/${side.name}") {
-                        popUpTo("home")
+                    if (activity != null) {
+                        AdManager.showInterstitialBeforeGame(activity) {
+                            navController.navigate("game/ai/${difficulty.name}/${side.name}") {
+                                popUpTo("home")
+                            }
+                        }
+                    } else {
+                        navController.navigate("game/ai/${difficulty.name}/${side.name}") {
+                            popUpTo("home")
+                        }
                     }
                 },
             )
@@ -124,11 +135,20 @@ fun KnightfallNavHost() {
         }
 
         composable("matchmaking") {
+            val activity = LocalContext.current.findActivity()
             MatchmakingScreen(
                 container = container,
                 onGameReady = { gameId ->
-                    navController.navigate("game/online/$gameId") {
-                        popUpTo("home")
+                    if (activity != null) {
+                        AdManager.showInterstitialBeforeGame(activity) {
+                            navController.navigate("game/online/$gameId") {
+                                popUpTo("home")
+                            }
+                        }
+                    } else {
+                        navController.navigate("game/online/$gameId") {
+                            popUpTo("home")
+                        }
                     }
                 },
                 onBack = { navController.popBackStack() },
@@ -136,12 +156,21 @@ fun KnightfallNavHost() {
         }
 
         composable("friend") {
+            val activity = LocalContext.current.findActivity()
             FriendScreen(
                 container = container,
                 onBack = { navController.popBackStack() },
                 onGameReady = { gameId ->
-                    navController.navigate("game/online/$gameId") {
-                        popUpTo("home")
+                    if (activity != null) {
+                        AdManager.showInterstitialBeforeGame(activity) {
+                            navController.navigate("game/online/$gameId") {
+                                popUpTo("home")
+                            }
+                        }
+                    } else {
+                        navController.navigate("game/online/$gameId") {
+                            popUpTo("home")
+                        }
                     }
                 },
             )

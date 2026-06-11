@@ -6,7 +6,7 @@
 
 **Outsmart a grandmaster-strength AI · Get friendly coaching · Battle players worldwide**
 
-[**⬇ Download the latest version**](https://github.com/chartmann1590/knightfall/releases/latest) · [**🌐 Visit the website**](https://chartmann1590.github.io/knightfall/) · [**🏆 Live leaderboard**](https://chartmann1590.github.io/knightfall/leaderboard.html)
+[**⬇ Download the latest version**](https://github.com/chartmann1590/knightfall/releases/latest) · [**🌐 Visit the website**](https://chartmann1590.github.io/knightfall/) · [**🏆 Live leaderboard**](https://chartmann1590.github.io/knightfall/leaderboard.html) · [**🔒 Privacy Policy**](https://chartmann1590.github.io/knightfall/privacy.html)
 
 *Free forever · No ads · Android 12+*
 

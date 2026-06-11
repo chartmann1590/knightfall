@@ -27,6 +27,11 @@ val ghToken = System.getenv("GH_API_TOKEN") ?: localProps.getProperty("github.ap
 val ghRepoOwner = System.getenv("GH_REPO_OWNER") ?: localProps.getProperty("github.repo.owner") ?: ""
 val ghRepoName = System.getenv("GH_REPO_NAME") ?: localProps.getProperty("github.repo.name") ?: ""
 
+val admobAppId = System.getenv("ADMOB_APP_ID") ?: localProps.getProperty("admob.app.id") ?: ""
+val admobBannerAdId = System.getenv("ADMOB_BANNER_AD_ID") ?: localProps.getProperty("admob.banner.ad.id") ?: ""
+val admobInterstitialAdId = System.getenv("ADMOB_INTERSTITIAL_AD_ID") ?: localProps.getProperty("admob.interstitial.ad.id") ?: ""
+val googleClientId = System.getenv("GOOGLE_CLIENT_ID") ?: localProps.getProperty("google.client.id") ?: ""
+
 fun signingValue(key: String): String? =
     System.getenv(key) ?: keystoreProps.getProperty(key)
 
@@ -47,6 +52,11 @@ android {
         buildConfigField("String", "GITHUB_REPO_OWNER", "\"$ghRepoOwner\"")
         buildConfigField("String", "GITHUB_REPO_NAME", "\"$ghRepoName\"")
         buildConfigField("String", "FEEDBACK_ASSETS_DIR", "\"feedback-assets\"")
+
+        manifestPlaceholders["admobAppId"] = admobAppId
+        buildConfigField("String", "ADMOB_BANNER_AD_ID", "\"$admobBannerAdId\"")
+        buildConfigField("String", "ADMOB_INTERSTITIAL_AD_ID", "\"$admobInterstitialAdId\"")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"$googleClientId\"")
     }
 
     signingConfigs {
@@ -159,6 +169,7 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play.services)
     implementation(libs.googleid)
+    implementation(libs.google.play.services.ads)
 
     implementation(libs.litertlm)
     implementation(libs.chesslib)

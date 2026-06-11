@@ -222,7 +222,7 @@ fun SettingsScreen(
                                 val credManager = CredentialManager.create(context)
                                 val googleOption = GetGoogleIdOption.Builder()
                                     .setFilterByAuthorizedAccounts(false)
-                                    .setServerClientId("439141758944-kjo00p5e09efjptca8ibjm2fkclfrioh.apps.googleusercontent.com")
+                                    .setServerClientId(com.chartmann.knightfall.BuildConfig.GOOGLE_CLIENT_ID)
                                     .setAutoSelectEnabled(false)
                                     .build()
                                 val request = GetCredentialRequest.Builder()
