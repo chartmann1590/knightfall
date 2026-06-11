@@ -63,7 +63,7 @@ class CoachModelManager(private val context: Context) {
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             DOWNLOAD_WORK_NAME,
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             request,
         )
     }
@@ -83,8 +83,9 @@ class CoachModelManager(private val context: Context) {
     companion object {
         const val DOWNLOAD_WORK_NAME = "gemma4_model_download"
         const val MODEL_FILE_NAME = "gemma-4-E2B-it.litertlm"
+        // Public, ungated repo (Apache 2.0) — no Hugging Face token required.
         const val MODEL_URL =
-            "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/model.litertlm"
+            "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
 
         // The real file is ~2.5 GB; anything below this is a broken download.
         const val MIN_VALID_SIZE_BYTES = 1_500_000_000L

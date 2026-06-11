@@ -65,9 +65,14 @@ class GameRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
      * rules only allow claiming a seat on a game still in 'waiting'.
      */
     suspend fun quickMatch(uid: String, username: String, elo: Int): String {
+        // Ignore stale lobbies whose host probably left without cancelling.
+        val freshCutoff = Timestamp(
+            com.google.firebase.Timestamp.now().seconds - QUICK_MATCH_MAX_AGE_SECONDS, 0,
+        )
         val candidates = games
             .whereEqualTo("status", GameStatusValues.WAITING)
             .whereEqualTo("isPrivate", false)
+            .whereGreaterThan("createdAt", freshCutoff)
             .orderBy("createdAt", Query.Direction.ASCENDING)
             .limit(5)
             .get().await()
@@ -236,6 +241,8 @@ class GameRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
     }
 
     companion object {
+        const val QUICK_MATCH_MAX_AGE_SECONDS = 15L * 60
+
         private const val CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
         fun generateInviteCode(random: Random = Random.Default): String =

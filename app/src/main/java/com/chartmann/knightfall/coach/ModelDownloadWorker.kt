@@ -47,6 +47,7 @@ class ModelDownloadWorker(
 
             val code = connection.responseCode
             if (code !in 200..299) {
+                android.util.Log.w(TAG, "Model download got HTTP $code (attempt $runAttemptCount)")
                 if (code == 416) {
                     // Range beyond EOF — partial file corrupt; start over.
                     partial.delete()
@@ -95,8 +96,10 @@ class ModelDownloadWorker(
                 partial.delete()
             }
             setProgress(workDataOf(KEY_PROGRESS to 100))
+            android.util.Log.i(TAG, "Model download complete: ${manager.modelFile.length()} bytes")
             Result.success()
         } catch (e: Exception) {
+            android.util.Log.w(TAG, "Model download failed (attempt $runAttemptCount)", e)
             if (runAttemptCount < 5) Result.retry() else Result.failure()
         }
     }
@@ -123,5 +126,6 @@ class ModelDownloadWorker(
     companion object {
         const val KEY_PROGRESS = "progress"
         private const val NOTIFICATION_ID = 4801
+        private const val TAG = "KnightfallModelDl"
     }
 }

@@ -94,7 +94,10 @@ fun OnlineGameScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onExit) {
+                    IconButton(onClick = {
+                        if (state.waitingForOpponent) vm.cancelWaiting()
+                        onExit()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
