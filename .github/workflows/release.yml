@@ -24,6 +24,56 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android NDK r27
+        run: |
+          INSTALLED=$(ls -d "$ANDROID_HOME/ndk"/27.* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$INSTALLED" ]; then
+            echo "Installing NDK 27.2.12479018..."
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.2.12479018" 2>&1 | tail -3
+          else
+            echo "NDK already present: $INSTALLED"
+          fi
+
+      - name: Restore Stockfish binary (16 KB page-compliant)
+        id: sf-cache
+        uses: actions/cache@v4
+        with:
+          path: app/src/main/jniLibs/arm64-v8a/libstockfish.so
+          key: stockfish-sf18-arm64-16kb-v1
+
+      - name: Build Stockfish for Android arm64 with 16 KB page alignment
+        if: steps.sf-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+
+          NDK_ROOT=$(ls -d "$ANDROID_HOME/ndk"/27.* | sort -V | tail -1)
+          NDK_BIN="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "Building Stockfish with NDK: $NDK_ROOT"
+
+          # Download Stockfish 18 source
+          wget -q "https://github.com/official-stockfish/Stockfish/archive/refs/tags/sf_18.tar.gz" -O sf18.tar.gz
+          tar xf sf18.tar.gz
+
+          # Wrapper script: forwards all args to the NDK arm64 clang++ and appends the
+          # 16 KB page-size alignment linker flag. The flag is ignored during compilation
+          # passes and applied only when clang++ links the final binary.
+          WRAPPER="$(pwd)/sf-cxx-wrapper"
+          printf '#!/bin/bash\nexec "%s/aarch64-linux-android31-clang++" "$@" -z max-page-size=16384\n' "$NDK_BIN" > "$WRAPPER"
+          chmod +x "$WRAPPER"
+
+          cd Stockfish-sf_18/src
+          make -j$(nproc) \
+            ARCH=armv8 \
+            ANDROID_NDK="$NDK_ROOT" \
+            ANDROIDV=31 \
+            CXX="$WRAPPER" \
+            build
+
+          DEST="$GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a"
+          mkdir -p "$DEST"
+          cp stockfish "$DEST/libstockfish.so"
+          echo "Installed 16 KB-aligned Stockfish binary"
+
       - name: Run unit tests
         env:
           GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
