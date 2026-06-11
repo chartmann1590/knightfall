@@ -24,6 +24,11 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Run unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew testReleaseUnitTest
+
       - name: Decode signing keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\r\n' | base64 -d > "$RUNNER_TEMP/release.keystore"
@@ -35,7 +40,6 @@ jobs:
           KNIGHTFALL_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KNIGHTFALL_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          chmod +x gradlew
           ./gradlew assembleRelease bundleRelease \
             -PversionCode=$((100 + ${{ github.run_number }})) \
             -PversionName="1.0.${{ github.run_number }}"
