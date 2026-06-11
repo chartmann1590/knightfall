@@ -22,11 +22,13 @@ Knightfall is a polished, free chess app for your Android phone. Whether you've 
 
 ♟️ **An opponent for every level** — Six AI difficulty levels, from "first game ever" to grandmaster strength. The engine runs entirely on your phone, so you can play on a plane, in a tunnel, anywhere. Stuck? Tap the lightbulb for a hint.
 
+⏱️ **Real chess clocks** — Every game (AI and online) runs with a 15-minute per-side clock, just like a real over-the-board match. Each player's remaining time is shown live; run out and you lose on time.
+
 🧠 **A coach in your corner** — Download the optional AI coach (Gemma 4, running 100% on your device) and get friendly, plain-English commentary while you play: what's going well, what to watch out for, and answers to your questions.
 
 🌍 **Play the world** — Hit **Quick Match** to get paired with another player, or create a **private game code** and text it to a friend. Rated games grow (or shrink…) your Elo rating.
 
-🏆 **Climb the leaderboard** — Every rated win moves you up the global rankings. Check the [live leaderboard](https://chartmann1590.github.io/knightfall/leaderboard.html) right from your browser.
+🏆 **Climb the leaderboard** — Every rated win — against the AI *or* other players — moves you up the global rankings. Check the [live leaderboard](https://chartmann1590.github.io/knightfall/leaderboard.html) right from your browser.
 
 🕵️ **Private by default** — Play as a guest with no account at all. Your profile only appears on the leaderboard and website if *you* turn on "Public profile". Crash reports, analytics, and notifications can all be switched off in Settings.
 
