@@ -39,6 +39,9 @@ jobs:
           KNIGHTFALL_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KNIGHTFALL_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KNIGHTFALL_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
+          GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
         run: |
           ./gradlew assembleRelease bundleRelease \
             -PversionCode=$((100 + ${{ github.run_number }})) \

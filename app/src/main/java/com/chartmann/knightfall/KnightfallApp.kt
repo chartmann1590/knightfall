@@ -25,6 +25,8 @@ class AppContainer(app: KnightfallApp) {
     val modelManager = CoachModelManager(app)
     val coach = GemmaCoach(modelManager)
     val sounds = com.chartmann.knightfall.ui.SoundManager(app)
+    val feedbackRepo = com.chartmann.knightfall.data.feedback.BugReportRepo(app)
+    val githubApi = com.chartmann.knightfall.data.feedback.GithubApi.create()
 }
 
 class KnightfallApp : Application() {

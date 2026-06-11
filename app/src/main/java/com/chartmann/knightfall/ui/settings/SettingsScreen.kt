@@ -204,6 +204,9 @@ fun SettingsScreen(
                 }
             }
 
+            SectionHeader("SUPPORT & FEEDBACK")
+            com.chartmann.knightfall.ui.settings.SupportCard(container)
+
             SectionHeader("ACCOUNT")
             if (isAnonymous) {
                 Text(

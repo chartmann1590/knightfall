@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.crashlytics)
     alias(libs.plugins.perf)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val appVersionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
@@ -15,6 +16,16 @@ val keystorePropsFile = rootProject.file("keystore/keystore.properties")
 val keystoreProps = Properties().apply {
     if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
 }
+
+val localProps = Properties().apply {
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        localPropsFile.inputStream().use { load(it) }
+    }
+}
+val ghToken = System.getenv("GH_API_TOKEN") ?: localProps.getProperty("github.api.token") ?: ""
+val ghRepoOwner = System.getenv("GH_REPO_OWNER") ?: localProps.getProperty("github.repo.owner") ?: ""
+val ghRepoName = System.getenv("GH_REPO_NAME") ?: localProps.getProperty("github.repo.name") ?: ""
 
 fun signingValue(key: String): String? =
     System.getenv(key) ?: keystoreProps.getProperty(key)
@@ -31,6 +42,11 @@ android {
         versionName = appVersionName
 
         ndk { abiFilters += "arm64-v8a" }
+
+        buildConfigField("String", "GITHUB_API_TOKEN", "\"$ghToken\"")
+        buildConfigField("String", "GITHUB_REPO_OWNER", "\"$ghRepoOwner\"")
+        buildConfigField("String", "GITHUB_REPO_NAME", "\"$ghRepoName\"")
+        buildConfigField("String", "FEEDBACK_ASSETS_DIR", "\"feedback-assets\"")
     }
 
     signingConfigs {
@@ -62,6 +78,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         // Stockfish ships as libstockfish.so and is exec'd from nativeLibraryDir,
@@ -110,6 +127,11 @@ tasks.named("preBuild") { dependsOn(downloadStockfish) }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.serialization)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
