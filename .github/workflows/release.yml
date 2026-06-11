@@ -27,7 +27,7 @@ jobs:
       - name: Run unit tests
         run: |
           chmod +x gradlew
-          ./gradlew testReleaseUnitTest
+          ./gradlew testDebugUnitTest
 
       - name: Decode signing keystore
         run: |

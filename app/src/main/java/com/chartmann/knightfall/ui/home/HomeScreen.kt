@@ -17,7 +17,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Laptop
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
@@ -56,6 +60,7 @@ fun HomeScreen(
     onProfile: () -> Unit,
     onSettings: () -> Unit,
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -129,6 +134,24 @@ fun HomeScreen(
             title = "My profile",
             subtitle = "Stats, rating history and game record",
             onClick = onProfile,
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "WEBSITE",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(10.dp))
+        MenuCard(
+            icon = Icons.Filled.Laptop,
+            title = "Play on the Web",
+            subtitle = "Access your profile and play games at chartmann1590.github.io/knightfall",
+            onClick = {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://chartmann1590.github.io/knightfall/"))
+                    context.startActivity(intent)
+                } catch (_: Exception) {}
+            },
         )
         Spacer(Modifier.height(24.dp))
     }

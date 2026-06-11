@@ -265,6 +265,31 @@
         </svg>
         Continue with Google
       </button>
+
+      <div class="divider">— or use Email —</div>
+
+      <div style="display: flex; gap: 8px; margin-bottom: 8px; background: var(--surface-2); padding: 4px; border-radius: 8px;">
+        <button id="tab-login" class="pbtn pbtn-dark" style="flex: 1; padding: 6px; font-size: 0.85rem; border: none !important;" onclick="toggleAuthTab('login')">Sign In</button>
+        <button id="tab-register" class="pbtn pbtn-ghost" style="flex: 1; padding: 6px; font-size: 0.85rem; border: none !important;" onclick="toggleAuthTab('register')">Register</button>
+      </div>
+
+      <div id="email-form" style="display: flex; flex-direction: column; gap: 8px; text-align: left;">
+        <div id="username-field" style="display: none;">
+          <label class="lbl" style="margin: 4px 0 2px;">Username</label>
+          <input type="text" class="inp" id="auth-username" placeholder="Username" style="text-align: left; text-transform: none; letter-spacing: normal;">
+        </div>
+        <div>
+          <label class="lbl" style="margin: 4px 0 2px;">Email Address</label>
+          <input type="email" class="inp" id="auth-email" placeholder="email@example.com" style="text-align: left; text-transform: none; letter-spacing: normal;">
+        </div>
+        <div>
+          <label class="lbl" style="margin: 4px 0 2px;">Password</label>
+          <input type="password" class="inp" id="auth-password" placeholder="••••••••" style="text-align: left; text-transform: none; letter-spacing: normal;">
+        </div>
+        <button class="pbtn pbtn-gold" id="btn-email-action" style="margin-top: 10px;" onclick="handleEmailAuth()">Sign In</button>
+      </div>
+
+      <div class="divider">— or play instantly —</div>
       <button class="pbtn pbtn-dark" onclick="doGuest()">♟️ Play as Guest</button>
     </div>
     <p id="auth-err" class="err" style="display:none"></p>
@@ -401,23 +426,16 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="app.js"></script>
 
 <script>
 // ─────────────────────────────────────────────────────────────────
 //  Firebase
 // ─────────────────────────────────────────────────────────────────
-firebase.initializeApp({
-  apiKey:            'AIzaSyA3CHXn6vYbYDcfLIJzj0wLDXXkfjvBB0o',
-  authDomain:        'knightfall-chess-app.firebaseapp.com',
-  projectId:         'knightfall-chess-app',
-  storageBucket:     'knightfall-chess-app.firebasestorage.app',
-  messagingSenderId: '439141758944',
-  appId:             '1:439141758944:web:7c1fe2a43cf84b80d41d85',
-});
-const auth = firebase.auth();
-const db   = firebase.firestore();
+const auth = window.auth;
+const db   = window.db;
 
-auth.onAuthStateChanged(user => { if (user) afterAuth(user); });
+window.onAuthChanged = user => { if (user) afterAuth(user); };
 
 // ─────────────────────────────────────────────────────────────────
 //  Piece map (Unicode chess symbols)
@@ -472,6 +490,62 @@ function setErr(id, msg) {
 // ─────────────────────────────────────────────────────────────────
 //  Auth
 // ─────────────────────────────────────────────────────────────────
+let authMode = 'login';
+
+function toggleAuthTab(m) {
+  authMode = m;
+  const usernameField = document.getElementById('username-field');
+  const actionBtn = document.getElementById('btn-email-action');
+  const tabLogin = document.getElementById('tab-login');
+  const tabRegister = document.getElementById('tab-register');
+
+  if (m === 'login') {
+    usernameField.style.display = 'none';
+    actionBtn.textContent = 'Sign In';
+    tabLogin.className = 'pbtn pbtn-dark';
+    tabRegister.className = 'pbtn pbtn-ghost';
+  } else {
+    usernameField.style.display = 'block';
+    actionBtn.textContent = 'Register';
+    tabLogin.className = 'pbtn pbtn-ghost';
+    tabRegister.className = 'pbtn pbtn-dark';
+  }
+}
+
+async function handleEmailAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value.trim();
+  const username = document.getElementById('auth-username').value.trim();
+  const actionBtn = document.getElementById('btn-email-action');
+
+  if (!email || !password) {
+    setErr('auth-err', 'Please fill in email and password fields.');
+    return;
+  }
+
+  if (authMode === 'register' && username.length < 2) {
+    setErr('auth-err', 'Username must be at least 2 characters.');
+    return;
+  }
+
+  setErr('auth-err', '');
+  actionBtn.disabled = true;
+
+  try {
+    if (authMode === 'login') {
+      await auth.signInWithEmailAndPassword(email, password);
+    } else {
+      const cred = await auth.createUserWithEmailAndPassword(email, password);
+      await ensureProfileExists(cred.user, username);
+      afterAuth(cred.user);
+    }
+  } catch(e) {
+    setErr('auth-err', e.message);
+  } finally {
+    actionBtn.disabled = false;
+  }
+}
+
 async function doGuest() {
   setErr('auth-err','');
   try { await auth.signInAnonymously(); }
@@ -481,7 +555,10 @@ async function doGoogle() {
   setErr('auth-err','');
   document.getElementById('btn-google').disabled = true;
   try {
-    await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    const cred = await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    if (cred.user) {
+      await ensureProfileExists(cred.user);
+    }
   } catch(e) {
     if (e.code !== 'auth/popup-closed-by-user')
       setErr('auth-err','Google sign-in unavailable here — use Guest instead, or add chartmann1590.github.io to Firebase Authorized Domains.');
@@ -489,8 +566,19 @@ async function doGoogle() {
     document.getElementById('btn-google').disabled = false;
   }
 }
-function afterAuth(user) {
-  const name = user.isAnonymous ? 'Guest' : (user.displayName || user.email || 'Player');
+async function afterAuth(user) {
+  if (user) {
+    await ensureProfileExists(user);
+  }
+  let name = user.isAnonymous ? 'Guest' : (user.displayName || user.email || 'Player');
+  try {
+    const profile = await fetchPrivateProfile(user.uid);
+    if (profile && profile.username) {
+      name = profile.username;
+    }
+  } catch (e) {
+    console.warn("Could not retrieve custom username:", e);
+  }
   document.getElementById('mode-av').textContent   = name.charAt(0).toUpperCase();
   document.getElementById('mode-name').textContent = name;
   document.getElementById('mode-sub').textContent  = user.isAnonymous ? 'Guest · not rated' : 'Signed in';
