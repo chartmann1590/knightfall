@@ -63,7 +63,16 @@
         <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
           <button class="btn btn-gold" id="btn-daily" onclick="loadDaily()" style="font-size:0.9rem; padding:10px 22px;">Daily Puzzle</button>
           <button class="btn btn-outline" id="btn-random" onclick="loadRandom()" style="font-size:0.9rem; padding:10px 22px;">Random Puzzle</button>
-          <span id="puzzle-info" style="color:var(--smoke); font-size:0.85rem; margin-left:4px;"></span>
+        </div>
+
+        <!-- Puzzle explanation card -->
+        <div id="puzzle-explanation" style="display:none; background:var(--surface); border:1px solid rgba(232,181,74,0.18); border-radius:12px; padding:16px 20px; margin-bottom:14px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+            <span id="puzzle-theme-name" style="font-family:'Playfair Display',serif; font-size:1.15rem; font-weight:700; color:var(--cream);"></span>
+            <span id="puzzle-difficulty-badge" style="font-size:0.75rem; padding:3px 12px; border-radius:20px; font-weight:700; letter-spacing:0.03em;"></span>
+          </div>
+          <div id="puzzle-instruction" style="font-size:1rem; color:var(--gold); font-weight:600; margin-bottom:5px;"></div>
+          <div id="puzzle-theme-desc" style="font-size:0.88rem; color:var(--smoke); line-height:1.5;"></div>
         </div>
 
         <p class="puzzle-turn" id="puzzle-turn"></p>
@@ -98,6 +107,45 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="app.js"></script>
   <script>
+    // ── Theme descriptions ───────────────────────────────────────────────────
+    const THEME_INFO = {
+      fork:             "One piece attacks two enemy pieces at the same time.",
+      pin:              "An enemy piece is immobilized — moving it would expose a more valuable piece behind.",
+      skewer:           "Attack a high-value piece to win the material sheltering behind it.",
+      discoveredAttack: "Move one piece to reveal a deadly attack from another.",
+      backRankMate:     "The king is trapped on the back rank with no escape.",
+      hangingPiece:     "Win a piece that is undefended or inadequately protected.",
+      sacrifice:        "Give up material to gain a decisive positional or attacking advantage.",
+      doubleCheck:      "Two pieces deliver check simultaneously — the king must move.",
+      attraction:       "Lure an enemy piece to a square where it can be exploited.",
+      clearance:        "Vacate a square or line so another piece can land the decisive blow.",
+      interference:     "Cut the connection between two enemy pieces.",
+      deflection:       "Force an enemy piece away from a key defensive duty.",
+      overloadedPiece:  "Exploit a piece that is defending too many things at once.",
+      xRayAttack:       "Attack through a piece to target what is hiding behind it.",
+      trappedPiece:     "Win a piece that has no safe escape square.",
+      quietMove:        "Find the subtle non-capturing move that wins.",
+      promotion:        "Promote a pawn for a game-winning advantage.",
+      mateIn1:          "Find the single move that delivers checkmate.",
+      mateIn2:          "Find the two-move sequence that forces checkmate.",
+      mateIn3:          "Calculate the forced three-move checkmate.",
+      crushing:         "Find the move that wins decisive material or forces checkmate.",
+      zugzwang:         "Any move your opponent makes leads to a worse position.",
+      endgame:          "Convert your material advantage in the endgame.",
+    };
+
+    function formatTheme(raw) {
+      return raw.replace(/([A-Z])/g, ' $1').replace(/^(.)/, c => c.toUpperCase()).trim();
+    }
+
+    function getDifficulty(rating) {
+      if (rating < 1200) return { label: 'Beginner', bg: 'rgba(111,191,115,0.15)', color: '#6fbf73' };
+      if (rating < 1400) return { label: 'Easy',     bg: 'rgba(139,195,74,0.15)',  color: '#8bc34a' };
+      if (rating < 1600) return { label: 'Medium',   bg: 'rgba(232,181,74,0.15)',  color: '#e8b54a' };
+      if (rating < 1800) return { label: 'Hard',     bg: 'rgba(255,152,0,0.15)',   color: '#ff9800' };
+      return               { label: 'Expert',    bg: 'rgba(224,122,107,0.15)',  color: '#e07a6b' };
+    }
+
     // ── Chess piece symbols ──────────────────────────────────────────────────
     const PIECE_SYMBOLS = {
       K:'♔', Q:'♕', R:'♖', B:'♗', N:'♘', P:'♙',
@@ -174,10 +222,24 @@
         moveIndex = 1;
       }
 
-      const theme = puzzle.themes && puzzle.themes[0]
-        ? puzzle.themes[0].replace(/([A-Z])/g, ' $1').trim()
-        : 'Tactics';
-      document.getElementById('puzzle-info').textContent = `${theme} · Rating ${puzzle.rating}`;
+      // Populate explanation card
+      const rawTheme = puzzle.themes && puzzle.themes[0] ? puzzle.themes[0] : 'tactics';
+      const themeName = formatTheme(rawTheme);
+      const themeDesc = THEME_INFO[rawTheme] || 'Find the best continuation in this position.';
+      const diff = getDifficulty(puzzle.rating || 1500);
+      const sideLabel = currentSide === 'w' ? 'White' : 'Black';
+
+      document.getElementById('puzzle-theme-name').textContent = themeName;
+      const badge = document.getElementById('puzzle-difficulty-badge');
+      badge.textContent = diff.label;
+      badge.style.background = diff.bg;
+      badge.style.color = diff.color;
+      badge.style.border = `1px solid ${diff.color}44`;
+      document.getElementById('puzzle-instruction').textContent =
+        `${sideLabel} to move — find the best sequence`;
+      document.getElementById('puzzle-theme-desc').textContent = themeDesc;
+      document.getElementById('puzzle-explanation').style.display = 'block';
+
       document.getElementById('puzzle-result').textContent = '';
       document.getElementById('puzzle-result').className = 'puzzle-result';
       document.getElementById('btn-retry').style.display = 'none';

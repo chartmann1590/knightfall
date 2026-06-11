@@ -314,10 +314,11 @@ footer p { margin-bottom: 6px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(1.5rem, 4.5vw, 2.4rem);
+  font-size: clamp(1.7rem, 7vw, 3.1rem);
   line-height: 1;
   user-select: none;
   position: relative;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.55);
 }
 
 .puzzle-board .sq.light { background: #f0d9b5; }
