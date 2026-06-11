@@ -67,6 +67,7 @@ jobs:
             ANDROID_NDK="$NDK_ROOT" \
             ANDROIDV=31 \
             CXX="$WRAPPER" \
+            LDFLAGS="-z max-page-size=16384" \
             build
 
           DEST="$GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a"
