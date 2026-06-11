@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete Account — Knightfall</title>
+  <meta name="description" content="Request account and associated data deletion for Knightfall.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♞</text></svg>">
+  <style>
+    .delete-card {
+      background: var(--surface);
+      border: 1px solid rgba(232, 181, 74, 0.12);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+      max-width: 500px;
+      margin: 30px auto;
+      width: 100%;
+    }
+    .pbtn-red {
+      background: linear-gradient(135deg, var(--red), #b04b3e);
+      color: var(--cream);
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 6px 30px rgba(224, 122, 107, 0.25);
+    }
+    .pbtn-red:hover {
+      background: #c26354;
+    }
+    .pbtn-red:disabled {
+      background: var(--surface-2);
+      color: var(--smoke);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="knight">♞</span> Knightfall</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="play.html">Play</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="https://github.com/chartmann1590/knightfall/releases/latest">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <section>
+    <div class="container" id="content" style="display: flex; justify-content: center; min-height: 400px; align-items: center; flex-direction: column;">
+      <div class="state-msg">
+        <span class="big">♞</span>
+        Loading details…
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>♞ Knightfall — free chess for Android</p>
+    <p><a href="index.html">Home</a> · <a href="leaderboard.html">Leaderboard</a> · <a href="privacy.html">Privacy Policy</a></p>
+  </footer>
+
+  <!-- Firebase 9 compat (traditional firebase.auth() / firebase.firestore() API) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="app.js"></script>
+  <script>
+    let authMode = 'login';
+
+    function toggleAuthTab(m) {
+      authMode = m;
+      const usernameField = document.getElementById('username-field');
+      const actionBtn = document.getElementById('btn-email-action');
+      const tabLogin = document.getElementById('tab-login');
+      const tabRegister = document.getElementById('tab-register');
+
+      if (m === 'login') {
+        usernameField.style.display = 'none';
+        actionBtn.textContent = 'Sign In';
+        tabLogin.className = 'pbtn pbtn-dark';
+        tabRegister.className = 'pbtn pbtn-ghost';
+      } else {
+        usernameField.style.display = 'block';
+        actionBtn.textContent = 'Register';
+        tabLogin.className = 'pbtn pbtn-ghost';
+        tabRegister.className = 'pbtn pbtn-dark';
+      }
+    }
+
+    async function handleEmailAuth() {
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value.trim();
+      const username = document.getElementById('auth-username').value.trim();
+      const actionBtn = document.getElementById('btn-email-action');
+      const errEl = document.getElementById('auth-err');
+
+      if (!email || !password) {
+        errEl.textContent = 'Please fill in email and password fields.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      errEl.style.display = 'none';
+      actionBtn.disabled = true;
+
+      try {
+        if (authMode === 'login') {
+          await auth.signInWithEmailAndPassword(email, password);
+        } else {
+          const cred = await auth.createUserWithEmailAndPassword(email, password);
+          await ensureProfileExists(cred.user, username);
+        }
+      } catch(e) {
+        errEl.textContent = e.message;
+        errEl.style.display = 'block';
+      } finally {
+        actionBtn.disabled = false;
+      }
+    }
+
+    async function doGoogle() {
+      const errEl = document.getElementById('auth-err');
+      if (errEl) errEl.style.display = 'none';
+      document.getElementById('btn-google').disabled = true;
+      try {
+        const cred = await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        if (cred.user) {
+          await ensureProfileExists(cred.user);
+        }
+      } catch(e) {
+        if (e.code !== 'auth/popup-closed-by-user') {
+          if (errEl) {
+            errEl.textContent = 'Google sign-in unavailable here — use Email instead.';
+            errEl.style.display = 'block';
+          }
+        }
+      } finally {
+        const btn = document.getElementById('btn-google');
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    // Called automatically by app.js when Auth state is resolved/changed
+    window.onAuthChanged = async (user) => {
+      if (user) {
+        renderDeleteConfirmation(user);
+      } else {
+        renderUnauthenticatedOptions();
+      }
+    };
+
+    function renderUnauthenticatedOptions() {
+      const content = document.getElementById('content');
+      content.style.display = 'block';
+      content.innerHTML = `
+        <div class="delete-card">
+          <h2 style="color: var(--red);">♟ Delete Your Account</h2>
+          <p style="margin-bottom: 20px; color: var(--smoke); font-size: 0.95rem;">
+            To request deletion of your Knightfall account and associated chess data, please sign in to delete your account instantly, or fill out the manual deletion request form below.
+          </p>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 16px; background: var(--surface-2); padding: 4px; border-radius: 8px;">
+            <button id="mode-signin-tab" class="pbtn pbtn-dark" style="flex: 1; padding: 6px; font-size: 0.85rem; border: none !important;" onclick="switchTab('signin')">Sign In & Delete</button>
+            <button id="mode-manual-tab" class="pbtn pbtn-ghost" style="flex: 1; padding: 6px; font-size: 0.85rem; border: none !important;" onclick="switchTab('manual')">Manual Request</button>
+          </div>
+
+          <!-- Tab 1: Sign In -->
+          <div id="signin-section">
+            <button class="pbtn pbtn-gold" id="btn-google" style="width: 100%; border: none; font-weight: 600;" onclick="doGoogle()">
+              <svg style="vertical-align:-3px;margin-right:8px" width="16" height="16" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.3 0 5.9 1.1 8 3l5.9-5.9C34.4 3.3 29.6 1 24 1 14.7 1 6.8 6.6 3.3 14.6l6.9 5.4C12 13.4 17.4 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.8-2.1 5.1-4.4 6.7l6.8 5.3c4-3.7 6.3-9.2 6.3-16z"/>
+                <path fill="#FBBC05" d="M10.2 28.6A15 15 0 0 1 9.5 24c0-1.6.3-3.1.7-4.6L3.3 14C1.2 18 0 22.4 0 27s1.2 9 3.3 13l6.9-5.4z"/>
+                <path fill="#34A853" d="M24 47c5.6 0 10.3-1.9 13.8-5.1l-6.8-5.3c-1.9 1.3-4.3 2-7 2-6.6 0-12-4-13.8-9.4l-6.9 5.4C6.8 41.4 14.7 47 24 47z"/>
+              </svg>
+              Continue with Google
+            </button>
+
+            <div class="divider" style="text-align:center; color:var(--smoke); font-size:.82rem; margin:14px 0;">— or use Email —</div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 8px; background: var(--surface-2); padding: 4px; border-radius: 8px; display: none;">
+              <button id="tab-login" class="pbtn pbtn-dark" style="flex: 1; padding: 6px; font-size: 0.85rem; border: none !important;" onclick="toggleAuthTab('login')">Sign In</button>
+              <button id="tab-register" class="pbtn pbtn-ghost" style="flex: 1; padding: 6px; font-size: 0.85rem; border: none !important;" onclick="toggleAuthTab('register')">Register</button>
+            </div>
+
+            <div id="email-form" style="display: flex; flex-direction: column; gap: 8px; text-align: left;">
+              <div id="username-field" style="display: none;">
+                <label class="lbl" style="margin: 4px 0 2px; font-size: 0.83rem; color: var(--smoke);">Username</label>
+                <input type="text" class="inp" id="auth-username" placeholder="Username" style="width:100%; padding:11px 14px; background:var(--surface-2); border:1px solid rgba(232,181,74,.25); border-radius:10px; color:var(--cream); font-size:.93rem; outline:none;">
+              </div>
+              <div>
+                <label class="lbl" style="margin: 4px 0 2px; font-size: 0.83rem; color: var(--smoke);">Email Address</label>
+                <input type="email" class="inp" id="auth-email" placeholder="email@example.com" style="width:100%; padding:11px 14px; background:var(--surface-2); border:1px solid rgba(232,181,74,.25); border-radius:10px; color:var(--cream); font-size:.93rem; outline:none; text-transform: none; letter-spacing: normal;">
+              </div>
+              <div>
+                <label class="lbl" style="margin: 4px 0 2px; font-size: 0.83rem; color: var(--smoke);">Password</label>
+                <input type="password" class="inp" id="auth-password" placeholder="••••••••" style="width:100%; padding:11px 14px; background:var(--surface-2); border:1px solid rgba(232,181,74,.25); border-radius:10px; color:var(--cream); font-size:.93rem; outline:none; text-transform: none; letter-spacing: normal;">
+              </div>
+              <button class="pbtn pbtn-gold" id="btn-email-action" style="width:100%; padding:13px 16px; border-radius:10px; font-weight:600; font-size:.95rem; border:none; cursor:pointer; background:linear-gradient(135deg,var(--gold),var(--gold-deep)); color:#14110f; margin-top: 10px;" onclick="handleEmailAuth()">Sign In</button>
+            </div>
+            <p id="auth-err" class="err" style="color:var(--red); font-size:.85rem; text-align:center; margin-top:10px; display:none"></p>
+          </div>
+
+          <!-- Tab 2: Manual -->
+          <div id="manual-section" style="display: none; text-align: left;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div>
+                <label class="lbl" style="margin: 4px 0 2px; font-size: 0.83rem; color: var(--smoke);">Email Address *</label>
+                <input type="email" class="inp" id="req-email" placeholder="email@example.com" style="width:100%; padding:11px 14px; background:var(--surface-2); border:1px solid rgba(232,181,74,.25); border-radius:10px; color:var(--cream); font-size:.93rem; outline:none;">
+              </div>
+              <div>
+                <label class="lbl" style="margin: 4px 0 2px; font-size: 0.83rem; color: var(--smoke);">Username (Optional)</label>
+                <input type="text" class="inp" id="req-username" placeholder="KnightPlayer" style="width:100%; padding:11px 14px; background:var(--surface-2); border:1px solid rgba(232,181,74,.25); border-radius:10px; color:var(--cream); font-size:.93rem; outline:none;">
+              </div>
+              <div>
+                <label class="lbl" style="margin: 4px 0 2px; font-size: 0.83rem; color: var(--smoke);">Reason / Notes (Optional)</label>
+                <textarea class="inp" id="req-reason" placeholder="Please delete all data associated with this account." style="width:100%; height:80px; padding:11px 14px; background:var(--surface-2); border:1px solid rgba(232,181,74,.25); border-radius:10px; color:var(--cream); font-size:.93rem; outline:none; resize:none; font-family:inherit;"></textarea>
+              </div>
+              <button class="pbtn pbtn-gold" id="btn-submit-req" style="width:100%; padding:13px 16px; border-radius:10px; font-weight:600; font-size:.95rem; border:none; cursor:pointer; background:linear-gradient(135deg,var(--gold),var(--gold-deep)); color:#14110f; margin-top: 10px;" onclick="submitManualRequest()">Submit Deletion Request</button>
+            </div>
+            <p id="req-status" style="font-size:.9rem; text-align:center; margin-top:12px; display:none"></p>
+          </div>
+        </div>
+      `;
+    }
+
+    function switchTab(tab) {
+      const signinTab = document.getElementById('mode-signin-tab');
+      const manualTab = document.getElementById('mode-manual-tab');
+      const signinSec = document.getElementById('signin-section');
+      const manualSec = document.getElementById('manual-section');
+
+      if (tab === 'signin') {
+        signinTab.className = 'pbtn pbtn-dark';
+        manualTab.className = 'pbtn pbtn-ghost';
+        signinSec.style.display = 'block';
+        manualSec.style.display = 'none';
+      } else {
+        signinTab.className = 'pbtn pbtn-ghost';
+        manualTab.className = 'pbtn pbtn-dark';
+        signinSec.style.display = 'none';
+        manualSec.style.display = 'block';
+      }
+    }
+
+    async function submitManualRequest() {
+      const email = document.getElementById('req-email').value.trim();
+      const username = document.getElementById('req-username').value.trim();
+      const reason = document.getElementById('req-reason').value.trim();
+      const btn = document.getElementById('btn-submit-req');
+      const statusEl = document.getElementById('req-status');
+
+      if (!email || email.length < 3 || !email.includes('@')) {
+        statusEl.textContent = 'Please enter a valid email address.';
+        statusEl.style.color = 'var(--red)';
+        statusEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      statusEl.style.display = 'none';
+
+      try {
+        await db.collection('deletionRequests').add({
+          email: email,
+          username: username,
+          reason: reason,
+          submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        statusEl.textContent = 'Request submitted successfully! We will delete your account and associated data within 24 hours.';
+        statusEl.style.color = 'var(--green)';
+        statusEl.style.display = 'block';
+        // Clear fields
+        document.getElementById('req-email').value = '';
+        document.getElementById('req-username').value = '';
+        document.getElementById('req-reason').value = '';
+      } catch (e) {
+        statusEl.textContent = 'Error: ' + e.message;
+        statusEl.style.color = 'var(--red)';
+        statusEl.style.display = 'block';
+        btn.disabled = false;
+      }
+    }
+
+    function renderDeleteConfirmation(user) {
+      const content = document.getElementById('content');
+      content.style.display = 'block';
+      content.innerHTML = `
+        <div class="delete-card">
+          <h2 style="color: var(--red);">♟ Delete Your Account</h2>
+          <p style="margin-top: 14px; font-weight: 600; color: var(--cream);">Signed in as: ${escapeHtml(user.email || 'Google User')}</p>
+          <div style="background: rgba(224, 122, 107, 0.1); border: 1px solid rgba(224, 122, 107, 0.2); border-radius: 8px; padding: 16px; margin: 20px 0; text-align: left;">
+            <p style="color: var(--red); font-weight: 700; margin-bottom: 8px;">⚠️ WARNING: Permanent Action</p>
+            <p style="color: var(--cream); font-size: 0.9rem; line-height: 1.5;">
+              Deleting your account is permanent. This will immediately and irreversibly delete your:
+            </p>
+            <ul style="color: var(--smoke); font-size: 0.88rem; margin-top: 8px; margin-left: 20px;">
+              <li>Elo Chess Rating and streak counts</li>
+              <li>Wins, Losses, and Draws statistics</li>
+              <li>Puzzle progress and streak records</li>
+              <li>Earned badges and achievements</li>
+              <li>Firestore user profile document</li>
+            </ul>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <button class="pbtn pbtn-red" id="btn-confirm-delete" onclick="performDelete()" style="width: 100%; padding: 14px; border-radius: 10px; font-size: 1rem;">
+              Permanently Delete Account & Data
+            </button>
+            <a href="profile.html" class="pbtn pbtn-ghost" style="text-align: center; border: 1px solid var(--smoke); padding: 10px; border-radius: 10px; color: var(--smoke); font-size: 0.95rem; font-weight: 600; display: inline-block;">
+              Cancel
+            </a>
+          </div>
+          <p id="delete-err" style="color: var(--red); font-size: 0.88rem; margin-top: 14px; display: none; text-align: left; line-height: 1.4;"></p>
+        </div>
+      `;
+    }
+
+    async function performDelete() {
+      const btn = document.getElementById('btn-confirm-delete');
+      const errEl = document.getElementById('delete-err');
+      const uid = auth.currentUser.uid;
+
+      btn.disabled = true;
+      errEl.style.display = 'none';
+
+      try {
+        // 1. Delete Firestore private profile
+        await db.collection('users').doc(uid).delete();
+        
+        // 2. Delete Firestore public profile
+        await db.collection('publicProfiles').doc(uid).delete().catch(() => {});
+
+        // 3. Delete Firebase Auth user
+        await auth.currentUser.delete();
+
+        alert('Your account and all associated data have been permanently deleted.');
+        window.location.href = 'index.html';
+      } catch (e) {
+        console.error("Deletion error:", e);
+        if (e.code === 'auth/requires-recent-login') {
+          errEl.textContent = 'For security reasons, you must have recently signed in to delete your account. Please sign out and sign in again, then attempt deletion.';
+        } else {
+          errEl.textContent = 'Failed to complete deletion. Detail: ' + e.message;
+        }
+        errEl.style.display = 'block';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
