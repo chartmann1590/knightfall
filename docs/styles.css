@@ -318,7 +318,24 @@ footer p { margin-bottom: 6px; }
   line-height: 1;
   user-select: none;
   position: relative;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.55);
+}
+
+/* White pieces: white fill, dark outline */
+.puzzle-board .sq.piece-w {
+  color: #ffffff;
+  text-shadow:
+    0 0 2px #000, 0 0 3px #000,
+    1px 1px 0 #333, -1px -1px 0 #333,
+    1px -1px 0 #333, -1px  1px 0 #333;
+}
+
+/* Black pieces: near-black fill, light outline */
+.puzzle-board .sq.piece-b {
+  color: #1a1008;
+  text-shadow:
+    0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.7),
+    1px 1px 0 rgba(255,255,255,0.6), -1px -1px 0 rgba(255,255,255,0.6),
+    1px -1px 0 rgba(255,255,255,0.6), -1px  1px 0 rgba(255,255,255,0.6);
 }
 
 .puzzle-board .sq.light { background: #f0d9b5; }

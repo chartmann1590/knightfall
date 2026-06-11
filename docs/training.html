@@ -290,7 +290,10 @@
           if (lastMoveSq[0] === idx || lastMoveSq[1] === idx) sq.classList.add('last-move');
 
           const piece = currentBoard ? currentBoard[idx] : null;
-          if (piece) sq.textContent = PIECE_SYMBOLS[piece] || '';
+          if (piece) {
+            sq.textContent = PIECE_SYMBOLS[piece] || '';
+            sq.classList.add(piece === piece.toUpperCase() ? 'piece-w' : 'piece-b');
+          }
           sq.dataset.idx = idx;
           sq.addEventListener('click', () => onSquareClick(idx));
           boardEl.appendChild(sq);
