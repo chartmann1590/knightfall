@@ -1,3 +1,4 @@
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -31,6 +32,8 @@ val admobAppId = System.getenv("ADMOB_APP_ID") ?: localProps.getProperty("admob.
 val admobBannerAdId = System.getenv("ADMOB_BANNER_AD_ID") ?: localProps.getProperty("admob.banner.ad.id") ?: ""
 val admobInterstitialAdId = System.getenv("ADMOB_INTERSTITIAL_AD_ID") ?: localProps.getProperty("admob.interstitial.ad.id") ?: ""
 val googleClientId = System.getenv("GOOGLE_CLIENT_ID") ?: localProps.getProperty("google.client.id") ?: ""
+val googleServicesJson = System.getenv("GOOGLE_SERVICES_JSON") ?: localProps.getProperty("google.services.json") ?: ""
+val googleServicesJsonBase64 = System.getenv("GOOGLE_SERVICES_JSON_BASE64") ?: localProps.getProperty("google.services.json.base64") ?: ""
 
 fun signingValue(key: String): String? =
     System.getenv(key) ?: keystoreProps.getProperty(key)
@@ -134,6 +137,30 @@ val downloadStockfish by tasks.registering {
 }
 
 tasks.named("preBuild") { dependsOn(downloadStockfish) }
+
+val googleServicesFile = layout.projectDirectory.file("google-services.json")
+val generateGoogleServices by tasks.registering {
+    outputs.file(googleServicesFile)
+    onlyIf { !googleServicesFile.asFile.exists() }
+    doLast {
+        val json = when {
+            googleServicesJson.isNotBlank() -> googleServicesJson
+            googleServicesJsonBase64.isNotBlank() -> String(
+                Base64.getDecoder().decode(googleServicesJsonBase64),
+                Charsets.UTF_8
+            )
+            else -> throw GradleException(
+                "app/google-services.json is missing. Provide GOOGLE_SERVICES_JSON, " +
+                    "GOOGLE_SERVICES_JSON_BASE64, or local.properties google.services.json."
+            )
+        }
+        googleServicesFile.asFile.writeText(json)
+    }
+}
+
+tasks.matching { it.name.startsWith("process") && it.name.endsWith("GoogleServices") }.configureEach {
+    dependsOn(generateGoogleServices)
+}
 
 dependencies {
     implementation(libs.androidx.core.ktx)

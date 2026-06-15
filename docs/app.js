@@ -1,19 +1,13 @@
 // Centralized Firebase initialization & Shared logic for Knightfall website
-const PROJECT_ID = 'knightfall-chess-app';
-const API_KEY = 'AIzaSyA3CHXn6vYbYDcfLIJzj0wLDXXkfjvBB0o'; // Auth-enabled API key
+const FIREBASE_CONFIG = window.KNIGHTFALL_FIREBASE_CONFIG || {};
+const PROJECT_ID = FIREBASE_CONFIG.projectId || 'knightfall-chess-app';
+const API_KEY = FIREBASE_CONFIG.apiKey || '';
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 // Initialize Firebase SDK if available
-if (typeof firebase !== 'undefined') {
+if (typeof firebase !== 'undefined' && API_KEY) {
   if (!firebase.apps.length) {
-    firebase.initializeApp({
-      apiKey:            API_KEY,
-      authDomain:        'knightfall-chess-app.firebaseapp.com',
-      projectId:         'knightfall-chess-app',
-      storageBucket:     'knightfall-chess-app.firebasestorage.app',
-      messagingSenderId: '439141758944',
-      appId:             '1:439141758944:web:7c1fe2a43cf84b80d41d85',
-    });
+    firebase.initializeApp(FIREBASE_CONFIG);
   }
   const auth = firebase.auth();
   const db   = firebase.firestore();
@@ -27,6 +21,8 @@ if (typeof firebase !== 'undefined') {
       window.onAuthChanged(user);
     }
   });
+} else if (typeof firebase !== 'undefined') {
+  console.warn('Firebase config was not loaded; auth-backed website features are disabled.');
 }
 
 // Update the navigation bar based on the current user status

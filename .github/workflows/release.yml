@@ -84,6 +84,7 @@ jobs:
           ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
           ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
           ADMOB_INTERSTITIAL_AD_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest
@@ -105,6 +106,7 @@ jobs:
           ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
           ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
           ADMOB_INTERSTITIAL_AD_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           ./gradlew assembleRelease bundleRelease \
             -PversionCode=$((100 + ${{ github.run_number }})) \

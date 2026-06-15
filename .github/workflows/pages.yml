@@ -1,0 +1,58 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build static site
+        env:
+          FIREBASE_WEB_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_WEB_API_KEY"
+          cp -R docs _site
+          cat > _site/firebase-config.js <<EOF
+          window.KNIGHTFALL_FIREBASE_CONFIG = {
+            apiKey: "$FIREBASE_WEB_API_KEY",
+            authDomain: "knightfall-chess-app.firebaseapp.com",
+            projectId: "knightfall-chess-app",
+            storageBucket: "knightfall-chess-app.firebasestorage.app",
+            messagingSenderId: "439141758944",
+            appId: "1:439141758944:web:7c1fe2a43cf84b80d41d85"
+          };
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
