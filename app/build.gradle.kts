@@ -129,7 +129,7 @@ val downloadStockfish by tasks.registering {
     outputs.file(stockfishSo)
     onlyIf { !stockfishSo.exists() }
     doLast {
-        val url = "https://github.com/chartmann1590/knightfall/releases/download/stockfish-android-16kb-v1/libstockfish.so"
+        val url = "https://github.com/chartmann1590/knightfall/releases/download/stockfish-android-16kb-v1/stockfish_static"
         stockfishSo.parentFile.mkdirs()
         ant.invokeMethod("get", mapOf("src" to url, "dest" to stockfishSo, "skipexisting" to "true"))
         if (!stockfishSo.exists()) {
