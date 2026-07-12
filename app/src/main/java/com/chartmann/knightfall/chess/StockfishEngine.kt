@@ -14,6 +14,7 @@ import kotlinx.coroutines.withTimeout
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
+import java.io.IOException
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 
@@ -120,10 +121,20 @@ class StockfishEngine(private val context: Context) {
 
     private fun send(command: String) {
         val w = writer ?: return
-        synchronized(w) {
-            w.write(command)
-            w.newLine()
-            w.flush()
+        try {
+            synchronized(w) {
+                w.write(command)
+                w.newLine()
+                w.flush()
+            }
+        } catch (e: IOException) {
+            // Process died underneath us (killed by OS, crashed, etc.) — tear
+            // down state so the next call to start()/isRunning triggers a
+            // fresh process instead of writing to a closed stream again.
+            process = null
+            writer = null
+            bestMoveDeferred?.completeExceptionally(e)
+            bestMoveDeferred = null
         }
     }
 

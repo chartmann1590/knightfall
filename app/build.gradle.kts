@@ -115,27 +115,25 @@ kotlin {
 }
 
 // The Stockfish binary exceeds GitHub's 100MB file limit, so it is not
-// committed. This task fetches the official android-armv8 build on machines
+// committed. This task fetches a prebuilt android-armv8 build on machines
 // (like CI) that don't have it yet.
+//
+// This is NOT the stock official-stockfish/Stockfish sf_18 release binary:
+// that build's PT_LOAD ELF segments are only 4KB-aligned, which trips
+// Android's 16KB page size compatibility warning (PageSizeMismatchDialog)
+// on 16KB-page devices. This asset is the same sf_18 source relinked with
+// NDK r27c and -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 so
+// all LOAD segments are 16KB-aligned; otherwise identical (static, non-PIE).
 val stockfishSo = file("src/main/jniLibs/arm64-v8a/libstockfish.so")
 val downloadStockfish by tasks.registering {
     outputs.file(stockfishSo)
     onlyIf { !stockfishSo.exists() }
     doLast {
-        val url = "https://github.com/official-stockfish/Stockfish/releases/download/sf_18/stockfish-android-armv8.tar"
-        val tarFile = File(temporaryDir, "stockfish.tar")
+        val url = "https://github.com/chartmann1590/knightfall/releases/download/stockfish-android-16kb-v1/libstockfish.so"
         stockfishSo.parentFile.mkdirs()
-        ant.invokeMethod("get", mapOf("src" to url, "dest" to tarFile, "skipexisting" to "true"))
-        copy {
-            from(tarTree(tarFile)) {
-                include("stockfish/stockfish-android-armv8")
-                eachFile { path = "libstockfish.so" }
-                includeEmptyDirs = false
-            }
-            into(stockfishSo.parentFile)
-        }
+        ant.invokeMethod("get", mapOf("src" to url, "dest" to stockfishSo, "skipexisting" to "true"))
         if (!stockfishSo.exists()) {
-            throw GradleException("Stockfish download/extract failed")
+            throw GradleException("Stockfish download failed")
         }
     }
 }
