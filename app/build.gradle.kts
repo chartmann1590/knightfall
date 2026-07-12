@@ -10,8 +10,12 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-val appVersionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-val appVersionName = (project.findProperty("versionName") as String?) ?: "1.0.0-dev"
+val appVersionCode = System.getenv("ANDROID_VERSION_CODE")?.toIntOrNull()
+    ?: (project.findProperty("versionCode") as String?)?.toInt()
+    ?: 1
+val appVersionName = System.getenv("ANDROID_VERSION_NAME")
+    ?: (project.findProperty("versionName") as String?)
+    ?: "1.0.0-dev"
 
 val keystorePropsFile = rootProject.file("keystore/keystore.properties")
 val keystoreProps = Properties().apply {
