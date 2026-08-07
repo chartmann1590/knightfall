@@ -1,5 +1,6 @@
 package com.chartmann.knightfall.ui.game
 
+import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
@@ -56,6 +58,7 @@ import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.chess.GameOutcome
 import com.chartmann.knightfall.chess.GameStatus
 import com.chartmann.knightfall.chess.StockfishEngine
+import com.chartmann.knightfall.review.ReviewPrompter
 import com.chartmann.knightfall.ui.board.BoardTheme
 import com.chartmann.knightfall.ui.board.ChessBoard
 import com.github.bhlangonijr.chesslib.Side
@@ -74,11 +77,19 @@ fun AiGameScreen(
     )
     val state by vm.state.collectAsState()
     val haptics = LocalHapticFeedback.current
+    val context = LocalContext.current
     var coachInput by remember { mutableStateOf("") }
 
     LaunchedEffect(state.lastMove) {
         if (state.lastMove != null) {
             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
+
+    // A game against the AI just ended (win, loss, or draw) — a real completed session.
+    LaunchedEffect(state.outcome) {
+        if (state.outcome != null) {
+            (context as? Activity)?.let { ReviewPrompter.maybeRequestReview(it) }
         }
     }
 
