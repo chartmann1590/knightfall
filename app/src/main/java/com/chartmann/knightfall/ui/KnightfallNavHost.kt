@@ -224,7 +224,12 @@ fun KnightfallNavHost() {
                         popUpTo("home") { inclusive = true }
                     }
                 },
+                onMoreApps = { navController.navigate("more-apps") },
             )
+        }
+
+        composable("more-apps") {
+            com.chartmann.knightfall.ui.moreapps.MoreAppsScreen(onBack = { navController.popBackStack() })
         }
 
         composable("training") {

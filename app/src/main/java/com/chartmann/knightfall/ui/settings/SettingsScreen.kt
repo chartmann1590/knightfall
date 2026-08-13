@@ -1,5 +1,6 @@
 package com.chartmann.knightfall.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -60,6 +61,7 @@ fun SettingsScreen(
     isAnonymous: Boolean,
     onBack: () -> Unit,
     onSignedOut: () -> Unit,
+    onMoreApps: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -211,6 +213,22 @@ fun SettingsScreen(
 
             SectionHeader("SUPPORT & FEEDBACK")
             com.chartmann.knightfall.ui.settings.SupportCard(container)
+
+            SectionHeader("MORE APPS")
+            androidx.compose.material3.Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 1.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onMoreApps),
+            ) {
+                Text(
+                    "More apps from this developer",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                )
+            }
 
             SectionHeader("ACCOUNT")
             if (isAnonymous) {
