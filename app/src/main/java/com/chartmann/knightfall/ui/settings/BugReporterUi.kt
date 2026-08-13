@@ -35,7 +35,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.chartmann.knightfall.BuildConfig
 import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.data.feedback.*
 import kotlinx.coroutines.Dispatchers
@@ -172,9 +171,8 @@ fun ReportBugDialog(
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    val configValid = BuildConfig.GITHUB_API_TOKEN.isNotEmpty() &&
-            BuildConfig.GITHUB_REPO_OWNER.isNotEmpty() &&
-            BuildConfig.GITHUB_REPO_NAME.isNotEmpty()
+    // Always true now — the relay is a fixed public Worker URL, not per-install config.
+    val configValid = true
 
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -376,17 +374,11 @@ fun ReportBugDialog(
                                             }
                                             val filename = ImageUploadHelper.generateUniqueFilename()
                                             val uploadRequest = UploadAssetRequest(
-                                                message = "Upload issue screenshot",
-                                                content = base64
+                                                filename = filename,
+                                                contentBase64 = base64
                                             )
                                             val uploadResult = withContext(Dispatchers.IO) {
-                                                container.githubApi.uploadAsset(
-                                                    owner = BuildConfig.GITHUB_REPO_OWNER,
-                                                    repo = BuildConfig.GITHUB_REPO_NAME,
-                                                    assetDir = BuildConfig.FEEDBACK_ASSETS_DIR,
-                                                    filename = filename,
-                                                    request = uploadRequest
-                                                )
+                                                container.githubApi.uploadAsset(uploadRequest)
                                             }
                                             screenshotUrl = uploadResult.content?.download_url
                                         }
@@ -413,11 +405,7 @@ fun ReportBugDialog(
                                         )
 
                                         val createdIssue = withContext(Dispatchers.IO) {
-                                            container.githubApi.createIssue(
-                                                owner = BuildConfig.GITHUB_REPO_OWNER,
-                                                repo = BuildConfig.GITHUB_REPO_NAME,
-                                                request = issueRequest
-                                            )
+                                            container.githubApi.createIssue(issueRequest)
                                         }
 
                                         val bugReport = BugReport(
@@ -488,18 +476,10 @@ fun IssueDetailsDialog(
             isLoading = true
             try {
                 val issue = withContext(Dispatchers.IO) {
-                    container.githubApi.getIssue(
-                        owner = BuildConfig.GITHUB_REPO_OWNER,
-                        repo = BuildConfig.GITHUB_REPO_NAME,
-                        number = report.number
-                    )
+                    container.githubApi.getIssue(report.number)
                 }
                 val commentList = withContext(Dispatchers.IO) {
-                    container.githubApi.getComments(
-                        owner = BuildConfig.GITHUB_REPO_OWNER,
-                        repo = BuildConfig.GITHUB_REPO_NAME,
-                        number = report.number
-                    )
+                    container.githubApi.getComments(report.number)
                 }
 
                 issueDetails = issue
@@ -744,17 +724,11 @@ fun IssueDetailsDialog(
                                                 }
                                                 val filename = ImageUploadHelper.generateUniqueFilename()
                                                 val uploadRequest = UploadAssetRequest(
-                                                    message = "Upload comment screenshot",
-                                                    content = base64
+                                                    filename = filename,
+                                                    contentBase64 = base64
                                                 )
                                                 val uploadResult = withContext(Dispatchers.IO) {
-                                                    container.githubApi.uploadAsset(
-                                                        owner = BuildConfig.GITHUB_REPO_OWNER,
-                                                        repo = BuildConfig.GITHUB_REPO_NAME,
-                                                        assetDir = BuildConfig.FEEDBACK_ASSETS_DIR,
-                                                        filename = filename,
-                                                        request = uploadRequest
-                                                    )
+                                                    container.githubApi.uploadAsset(uploadRequest)
                                                 }
                                                 screenshotUrl = uploadResult.content?.download_url
                                             }
@@ -770,12 +744,7 @@ fun IssueDetailsDialog(
                                             )
 
                                             withContext(Dispatchers.IO) {
-                                                container.githubApi.postComment(
-                                                    owner = BuildConfig.GITHUB_REPO_OWNER,
-                                                    repo = BuildConfig.GITHUB_REPO_NAME,
-                                                    number = report.number,
-                                                    request = commentRequest
-                                                )
+                                                container.githubApi.postComment(report.number, commentRequest)
                                             }
 
                                             replyText = ""

@@ -77,9 +77,6 @@ jobs:
 
       - name: Run unit tests
         env:
-          GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
-          GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
-          GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
           ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
@@ -99,9 +96,6 @@ jobs:
           KNIGHTFALL_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KNIGHTFALL_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KNIGHTFALL_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
-          GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
-          GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
           ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}

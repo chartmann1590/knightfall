@@ -28,10 +28,6 @@ val localProps = Properties().apply {
         localPropsFile.inputStream().use { load(it) }
     }
 }
-val ghToken = System.getenv("GH_API_TOKEN") ?: localProps.getProperty("github.api.token") ?: ""
-val ghRepoOwner = System.getenv("GH_REPO_OWNER") ?: localProps.getProperty("github.repo.owner") ?: ""
-val ghRepoName = System.getenv("GH_REPO_NAME") ?: localProps.getProperty("github.repo.name") ?: ""
-
 val admobAppId = System.getenv("ADMOB_APP_ID") ?: localProps.getProperty("admob.app.id") ?: ""
 val admobBannerAdId = System.getenv("ADMOB_BANNER_AD_ID") ?: localProps.getProperty("admob.banner.ad.id") ?: ""
 val admobInterstitialAdId = System.getenv("ADMOB_INTERSTITIAL_AD_ID") ?: localProps.getProperty("admob.interstitial.ad.id") ?: ""
@@ -54,11 +50,6 @@ android {
         versionName = appVersionName
 
         ndk { abiFilters += "arm64-v8a" }
-
-        buildConfigField("String", "GITHUB_API_TOKEN", "\"$ghToken\"")
-        buildConfigField("String", "GITHUB_REPO_OWNER", "\"$ghRepoOwner\"")
-        buildConfigField("String", "GITHUB_REPO_NAME", "\"$ghRepoName\"")
-        buildConfigField("String", "FEEDBACK_ASSETS_DIR", "\"feedback-assets\"")
 
         manifestPlaceholders["admobAppId"] = admobAppId
         buildConfigField("String", "ADMOB_BANNER_AD_ID", "\"$admobBannerAdId\"")
