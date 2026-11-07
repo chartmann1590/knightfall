@@ -29,16 +29,13 @@ jobs:
         packages: platform-tools
     - name: Install Android NDK r27
       run: "INSTALLED=$(ls -d \"$ANDROID_HOME/ndk\"/27.* 2>/dev/null | sort -V | tail -1)\nif [ -z \"$INSTALLED\" ]; then\n  echo \"Installing NDK 27.2.12479018...\"\n  \"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager\" \"ndk;27.2.12479018\" 2>&1 | tail -3\nelse\n  echo \"NDK already present: $INSTALLED\"\nfi\n"
-    - name: Restore Stockfish binary (16 KB page-compliant)
-      id: sf-cache
-      uses: actions/cache@v4
-      with:
-        path: app/src/main/jniLibs/arm64-v8a/libstockfish.so
-        key: stockfish-sf18-arm64-16kb-v1
-    - name: Build Stockfish for Android arm64 with 16 KB page alignment
-      if: steps.sf-cache.outputs.cache-hit != 'true'
-      run: "set -euo pipefail\n\nNDK_ROOT=$(ls -d \"$ANDROID_HOME/ndk\"/27.* | sort -V | tail -1)\nNDK_BIN=\"$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin\"\necho \"Building Stockfish with NDK: $NDK_ROOT\"\n\n# Download Stockfish 18 source\nwget -q \"https://github.com/official-stockfish/Stockfish/archive/refs/tags/sf_18.tar.gz\" -O sf18.tar.gz\ntar xf sf18.tar.gz\n\n# Wrapper script: forwards all args to the NDK arm64 clang++ and appends the\n# 16 KB page-size alignment linker flag. The flag is ignored during compilation\n# passes and applied only when clang++ links the final binary.\nWRAPPER=\"$(pwd)/sf-cxx-wrapper\"\nprintf '#!/bin/bash\\nexec \"%s/aarch64-linux-android31-clang++\" \"$@\" -z max-page-size=16384\\n' \"$NDK_BIN\" > \"$WRAPPER\"\nchmod +x \"$WRAPPER\"\n\ncd Stockfish-sf_18/src\nmake -j$(nproc) \\\n  ARCH=armv8 \\\n  ANDROID_NDK=\"$NDK_ROOT\" \\\n  ANDROIDV=31 \\\n  CXX=\"$WRAPPER\" \\\n  LDFLAGS=\"-z max-page-size=16384\" \\\n  build\n\nDEST=\"$GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a\"\
-        \nmkdir -p \"$DEST\"\ncp stockfish \"$DEST/libstockfish.so\"\necho \"Installed 16 KB-aligned Stockfish binary\"\n"
+    - name: Fetch the static Stockfish binary (gradle downloadStockfish; the cached NDK build is dynamically linked and cannot run)
+      run: |
+        set -euo pipefail
+        mkdir -p app/src/main/jniLibs/arm64-v8a
+        curl -fsSL -o app/src/main/jniLibs/arm64-v8a/libstockfish.so https://github.com/chartmann1590/knightfall/releases/download/stockfish-android-16kb-v1/stockfish_static
+        ls -l app/src/main/jniLibs/arm64-v8a/libstockfish.so
+        file app/src/main/jniLibs/arm64-v8a/libstockfish.so || true
     - name: Decode signing keystore
       run: 'echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d ''\r\n'' | base64 -d > "$RUNNER_TEMP/release.keystore"
 
