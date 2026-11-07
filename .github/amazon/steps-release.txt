@@ -7,6 +7,9 @@ taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|acc
 adclose
 wait 3
 shot 02-after-onboarding
+tap (?i)^play as guest$
+wait 6
+shot 02b-guest
 swipeup
 swipeup
 taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|english|while using the app|only this time)$
@@ -15,6 +18,13 @@ adclose
 shot 03-main
 swipeup
 shot 04-scrolled
+tap (?i)^(play the ai|play ai)$
+wait 4
+tap (?i)^(start game|let's play)$
+wait 8
+shot 04b-game
+back
+wait 3
 tap (?i)^settings$
 wait 4
 adclose
