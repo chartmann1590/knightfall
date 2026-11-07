@@ -69,7 +69,7 @@ jobs:
         sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
 
         '
-    - name: Emulator test (google_apis image: ARM-only native libs need its ARM translation)
+    - name: Emulator test (google_apis image, for the ARM translation that ARM-only native libs need)
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 31
