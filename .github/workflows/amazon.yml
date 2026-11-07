@@ -55,18 +55,26 @@ jobs:
         ADMOB_INTERSTITIAL_AD_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
         GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         APP_VERSION_CODE: ${{ github.run_number }}
-      run: "./gradlew assembleRelease -Pstore=amazon  \\\n  -PversionCode=$((100 + ${{ github.run_number }})) \\\n  -PversionName=\"1.0.${{ github.run_number }}\"\nmkdir -p amz-apk\ncp \"$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1 || ls app/build/outputs/apk/release/*.apk | head -1)\" amz-apk/Knightfall-amazon-release.apk\nls -la amz-apk\nBT=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)\n$BT/apksigner verify --print-certs amz-apk/Knightfall-amazon-release.apk | head -3 || true\n$BT/aapt2 dump badging amz-apk/Knightfall-amazon-release.apk | head -3 || true\necho \"--- Play Store URL strings left in the amazon release dex:\"; unzip -p amz-apk/Knightfall-amazon-release.apk 'classes*.dex' | strings | grep -E \"play\\.google\\.com/store|market://\" | head || true\n"
+      run: "set -o pipefail\n./gradlew assembleRelease -Pstore=amazon  \\\n  -PversionCode=$((100 + ${{ github.run_number }})) \\\n  -PversionName=\"1.0.${{ github.run_number }}\" 2>&1 | tee -a /tmp/amz-build.log\nmkdir -p amz-apk\ncp \"$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1 || ls app/build/outputs/apk/release/*.apk | head -1)\" amz-apk/Knightfall-amazon-release.apk\nls -la amz-apk\nBT=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)\n$BT/apksigner verify --print-certs amz-apk/Knightfall-amazon-release.apk | head -3 || true\n$BT/aapt2 dump badging amz-apk/Knightfall-amazon-release.apk | head -3 || true\necho \"--- Play Store URL strings left in the amazon release dex:\"; unzip -p amz-apk/Knightfall-amazon-release.apk 'classes*.dex' | strings | grep -E \"play\\.google\\.com/store|market://\" | head || true\n"
+    - name: Ship build log tail to the private drop (on failure)
+      if: failure()
+      env:
+        DROP_KEY: ${{ secrets.DROP_KEY }}
+      run: 'tail -c 60000 /tmp/amz-build.log 2>/dev/null | curl -s -m 60 -X PUT -H "X-Key: $DROP_KEY" --data-binary @- "https://hs-apk-drop.charles-h-hartmann1.workers.dev/c/amzlog_${{ github.event.repository.name }}_r${{ github.run_number }}/0" || true
+
+        '
     - name: Enable KVM
       run: 'echo ''KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"'' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
 
         sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
 
         '
-    - name: Emulator test (no Google Play services, like Fire)
+    - name: Emulator test (google_apis image: ARM-only native libs need its ARM translation)
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 31
-        target: default
+        profile: Nexus 7 2013
+        target: google_apis
         arch: x86_64
         ram-size: 3072M
         disk-size: 4096M
