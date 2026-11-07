@@ -1,0 +1,88 @@
+name: Amazon Appstore build + emulator test
+# Amazon Appstore (Fire) build of this app: same code, built with -Pstore=amazon (no Google Play
+# links, no Play in-app review prompt). Run on an emulator without Google Play services (like Fire).
+# Branch builds only make a DRAFT release; nothing is uploaded to any store.
+on:
+  push:
+    branches: [amazon]
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: amazon-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  amazon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: platform-tools
+    - name: Install Android NDK r27
+      run: "INSTALLED=$(ls -d \"$ANDROID_HOME/ndk\"/27.* 2>/dev/null | sort -V | tail -1)\nif [ -z \"$INSTALLED\" ]; then\n  echo \"Installing NDK 27.2.12479018...\"\n  \"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager\" \"ndk;27.2.12479018\" 2>&1 | tail -3\nelse\n  echo \"NDK already present: $INSTALLED\"\nfi\n"
+    - name: Restore Stockfish binary (16 KB page-compliant)
+      id: sf-cache
+      uses: actions/cache@v4
+      with:
+        path: app/src/main/jniLibs/arm64-v8a/libstockfish.so
+        key: stockfish-sf18-arm64-16kb-v1
+    - name: Build Stockfish for Android arm64 with 16 KB page alignment
+      if: steps.sf-cache.outputs.cache-hit != 'true'
+      run: "set -euo pipefail\n\nNDK_ROOT=$(ls -d \"$ANDROID_HOME/ndk\"/27.* | sort -V | tail -1)\nNDK_BIN=\"$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin\"\necho \"Building Stockfish with NDK: $NDK_ROOT\"\n\n# Download Stockfish 18 source\nwget -q \"https://github.com/official-stockfish/Stockfish/archive/refs/tags/sf_18.tar.gz\" -O sf18.tar.gz\ntar xf sf18.tar.gz\n\n# Wrapper script: forwards all args to the NDK arm64 clang++ and appends the\n# 16 KB page-size alignment linker flag. The flag is ignored during compilation\n# passes and applied only when clang++ links the final binary.\nWRAPPER=\"$(pwd)/sf-cxx-wrapper\"\nprintf '#!/bin/bash\\nexec \"%s/aarch64-linux-android31-clang++\" \"$@\" -z max-page-size=16384\\n' \"$NDK_BIN\" > \"$WRAPPER\"\nchmod +x \"$WRAPPER\"\n\ncd Stockfish-sf_18/src\nmake -j$(nproc) \\\n  ARCH=armv8 \\\n  ANDROID_NDK=\"$NDK_ROOT\" \\\n  ANDROIDV=31 \\\n  CXX=\"$WRAPPER\" \\\n  LDFLAGS=\"-z max-page-size=16384\" \\\n  build\n\nDEST=\"$GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a\"\
+        \nmkdir -p \"$DEST\"\ncp stockfish \"$DEST/libstockfish.so\"\necho \"Installed 16 KB-aligned Stockfish binary\"\n"
+    - name: Decode signing keystore
+      run: 'echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d ''\r\n'' | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+        '
+    - name: Build amazon APKs (store=amazon)
+      env:
+        KNIGHTFALL_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+        KNIGHTFALL_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KNIGHTFALL_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KNIGHTFALL_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+        ADMOB_BANNER_AD_ID: ${{ secrets.ADMOB_BANNER_AD_ID }}
+        ADMOB_INTERSTITIAL_AD_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_ID }}
+        GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        APP_VERSION_CODE: ${{ github.run_number }}
+      run: "./gradlew assembleRelease -Pstore=amazon  \\\n  -PversionCode=$((100 + ${{ github.run_number }})) \\\n  -PversionName=\"1.0.${{ github.run_number }}\"\nmkdir -p amz-apk\ncp \"$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1 || ls app/build/outputs/apk/release/*.apk | head -1)\" amz-apk/Knightfall-amazon-release.apk\nls -la amz-apk\nBT=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)\n$BT/apksigner verify --print-certs amz-apk/Knightfall-amazon-release.apk | head -3 || true\n$BT/aapt2 dump badging amz-apk/Knightfall-amazon-release.apk | head -3 || true\necho \"--- Play Store URL strings left in the amazon release dex:\"; unzip -p amz-apk/Knightfall-amazon-release.apk 'classes*.dex' | strings | grep -E \"play\\.google\\.com/store|market://\" | head || true\n"
+    - name: Enable KVM
+      run: 'echo ''KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"'' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+
+        sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+        '
+    - name: Emulator test (no Google Play services, like Fire)
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 31
+        target: default
+        arch: x86_64
+        ram-size: 3072M
+        disk-size: 4096M
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        disable-animations: true
+        script: bash .github/amazon/run-tests.sh
+    - name: Upload test results to Tab's private drop
+      if: always()
+      env:
+        DROP_KEY: ${{ secrets.DROP_KEY }}
+      run: bash .github/amazon/amazon-upload.sh /tmp/amz-out amz_Knightfall_r${{ github.run_number }}
+    - name: Draft release with the amazon APK (not published)
+      if: success()
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: amazon-${{ github.run_number }}
+        name: Amazon build ${{ github.run_number }} (${{ github.sha }})
+        draft: true
+        files: amz-apk/Knightfall-amazon-release.apk
