@@ -10,6 +10,13 @@ shot 02-after-onboarding
 tap (?i)^play as guest$
 wait 6
 shot 02b-guest
+tap (?i)^player name$
+wait 2
+type TabTester
+wait 2
+tap (?i)^continue$
+wait 6
+shot 02c-named
 swipeup
 swipeup
 taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|english|while using the app|only this time)$
