@@ -85,7 +85,7 @@ fun MoreAppsScreen(onBack: () -> Unit) {
                     tonalElevation = 1.dp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { uriHandler.openUri("https://play.google.com/store/apps/details?id=${app.packageName}") },
+                        .clickable { uriHandler.openUri((if (com.chartmann.knightfall.BuildConfig.STORE == "direct") "https://charleshartmann.com/apps/" else "https://play.google.com/store/apps/details?id=${app.packageName}")) },
                 ) {
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
                         Column(Modifier.fillMaxWidth()) {
