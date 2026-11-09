@@ -238,7 +238,8 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(10.dp))
-                Button(
+                // Not in the Amazon build: Fire tablets have no Google Play services for Google sign-in.
+                if (com.chartmann.knightfall.BuildConfig.STORE != "amazon") Button(
                     onClick = {
                         scope.launch {
                             try {

@@ -121,8 +121,8 @@ private fun AccountChoice(vm: OnboardingViewModel, state: OnboardingState) {
     )
     Spacer(Modifier.height(28.dp))
 
-    // Google Sign-In button
-    Button(
+    // Google Sign-In button (not in the Amazon build: Fire tablets have no Google Play services)
+    if (com.chartmann.knightfall.BuildConfig.STORE != "amazon") Button(
         onClick = {
             scope.launch {
                 try {
@@ -152,9 +152,11 @@ private fun AccountChoice(vm: OnboardingViewModel, state: OnboardingState) {
         enabled = !state.working,
     ) { Text("Continue with Google") }
 
+    if (com.chartmann.knightfall.BuildConfig.STORE != "amazon") {
     Spacer(Modifier.height(12.dp))
     HorizontalDivider()
     Spacer(Modifier.height(12.dp))
+    }
 
     Button(
         onClick = {
