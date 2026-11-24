@@ -11,6 +11,11 @@ on:
         description: 'Release notes (optional; uses recent commits if empty)'
         required: false
         default: ''
+      changes_not_sent_for_review:
+        description: 'Set true when Play will not auto-send changes for review (e.g. resubmitting a removed app); the edit then commits unsent and is sent for review from the Play Console UI'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   publish:
@@ -117,4 +122,5 @@ jobs:
           track: production
           status: completed
           whatsNewDirectory: distribution/whatsnew
+          changesNotSentForReview: ${{ inputs.changes_not_sent_for_review }}
           mappingFile: app/build/outputs/mapping/release/mapping.txt
