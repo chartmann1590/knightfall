@@ -29,6 +29,7 @@ class UserRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
     }
 
     suspend fun createProfile(uid: String, username: String, avatarColor: String) {
+        UsernameFilter.violation(username)?.let { throw IllegalArgumentException(it) }
         val profile = UserProfile(
             username = username,
             avatarColor = avatarColor,
@@ -38,6 +39,7 @@ class UserRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
     }
 
     suspend fun updateUsername(uid: String, username: String) {
+        UsernameFilter.violation(username)?.let { throw IllegalArgumentException(it) }
         userDoc(uid).update("username", username).await()
         val profile = getProfile(uid)
         if (profile?.isPublic == true) syncPublicProfile(uid)

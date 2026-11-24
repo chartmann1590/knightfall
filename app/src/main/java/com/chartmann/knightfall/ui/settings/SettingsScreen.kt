@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +34,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +54,8 @@ import com.chartmann.knightfall.ui.board.BoardTheme
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +73,7 @@ fun SettingsScreen(
     val modelState by container.modelManager.stateFlow()
         .collectAsState(initial = CoachModelManager.ModelState.NotDownloaded)
     var confirmDelete by remember { mutableStateOf(false) }
+    var showLicenses by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -292,8 +297,47 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = { showLicenses = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Open-source licenses") }
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (showLicenses) {
+        val licenseText by produceState(initialValue = "", context) {
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.assets.open("licenses/stockfish-gplv3.txt")
+                        .bufferedReader().readText()
+                }.getOrDefault("License text unavailable.")
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { showLicenses = false },
+            title = { Text("Open-source licenses") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        "Stockfish 18 chess engine - GNU General Public License v3" + "\n" +
+                            "Chess pieces by Colin M.L. Burnett" + "\n" +
+                            "Gemma 4 via LiteRT-LM - Apache License 2.0" + "\n\n" +
+                            "Stockfish is free software. Its full license text follows." + "\n",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(licenseText, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showLicenses = false }) { Text("Close") }
+            },
+        )
     }
 
     if (confirmDelete) {

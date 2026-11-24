@@ -16,7 +16,7 @@ Download the optional on-device Gemma 4 AI coach (2.5 GB, one-time download, run
 Opt in to a public profile and compete on the global leaderboard. See your stats, win/loss/draw record, and game history any time. The live leaderboard and profile stats are also accessible directly on the Knightfall website.
 
 🔒 PRIVACY FIRST
-Play as a guest (no account required) or sign in with email. Every data-sharing feature — Crashlytics, Analytics, Performance Monitoring, push notifications — is individually opt-out in Settings. No personal data is shared by default until you explicitly choose to.
+Play as a guest (no account required) or sign in with email or Google. Every data-sharing feature — Crashlytics, Analytics, Performance Monitoring, push notifications — is individually opt-out in Settings. Nothing is collected until you finish onboarding; after that, these are on by default - and you can turn each one off at any time in Settings.
 
 ✨ BEAUTIFUL & POLISHED
 — Material 3 dark chess theme
@@ -27,4 +27,4 @@ Play as a guest (no account required) or sign in with email. Every data-sharing 
 — Move sounds and haptic feedback
 — Works offline (AI mode requires no internet)
 
-Knightfall is free. No ads. No pay-to-win. Just chess.
+Knightfall is free, supported by ads - a small banner at the bottom of the screen and a short interstitial ad before games. No pay-to-win. Just chess.
