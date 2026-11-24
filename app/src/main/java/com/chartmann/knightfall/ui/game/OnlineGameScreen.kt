@@ -2,6 +2,7 @@ package com.chartmann.knightfall.ui.game
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,9 +18,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,10 +53,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.data.model.GameStatusValues
+import com.chartmann.knightfall.ui.components.BlockPlayerDialog
+import com.chartmann.knightfall.ui.components.ReportPlayerDialog
 import com.chartmann.knightfall.ui.board.BoardTheme
 import com.chartmann.knightfall.ui.board.ChessBoard
 import com.github.bhlangonijr.chesslib.Side
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +79,10 @@ fun OnlineGameScreen(
     val myUid = container.auth.uid ?: ""
 
     var showAiOfferDialog by remember { mutableStateOf(false) }
+    var opponentMenuOpen by remember { mutableStateOf(false) }
+    var showReportOpponent by remember { mutableStateOf(false) }
+    var showBlockOpponent by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     var hasDeclinedAiOffer by remember { mutableStateOf(false) }
 
     val showDialogTrigger = state.waitingForOpponent && state.game != null && state.game?.inviteCode == null
@@ -91,6 +103,42 @@ fun OnlineGameScreen(
     val game = state.game
     val opponentName = game?.opponentName(myUid)?.ifBlank { "Opponent" } ?: "Opponent"
     val myName = if (state.mySide == Side.WHITE) game?.whiteName else game?.blackName
+    val opponentUid = game?.let { if (it.whiteUid == myUid) it.blackUid else it.whiteUid }
+
+    if (showReportOpponent && opponentUid != null) {
+        ReportPlayerDialog(
+            playerName = opponentName,
+            onDismiss = { showReportOpponent = false },
+            onReport = { reason ->
+                showReportOpponent = false
+                scope.launch {
+                    try {
+                        container.moderation.reportPlayer(myUid, opponentUid, opponentName, reason, "online_game")
+                        snackbar.showSnackbar("Report sent - thanks, we'll review it.")
+                    } catch (e: Exception) {
+                        snackbar.showSnackbar("Couldn't send the report. Please try again.")
+                    }
+                }
+            },
+        )
+    }
+    if (showBlockOpponent && opponentUid != null) {
+        BlockPlayerDialog(
+            playerName = opponentName,
+            onDismiss = { showBlockOpponent = false },
+            onBlock = {
+                showBlockOpponent = false
+                scope.launch {
+                    try {
+                        container.moderation.blockPlayer(myUid, opponentUid)
+                        snackbar.showSnackbar("$opponentName blocked - you won't be matched with them again.")
+                    } catch (e: Exception) {
+                        snackbar.showSnackbar("Couldn't block that player. Please try again.")
+                    }
+                }
+            },
+        )
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -126,6 +174,26 @@ fun OnlineGameScreen(
                         }
                         IconButton(onClick = { vm.resign() }) {
                             Icon(Icons.Filled.Flag, contentDescription = "Resign")
+                        }
+                        if (opponentUid != null) {
+                            Box {
+                                IconButton(onClick = { opponentMenuOpen = true }) {
+                                    Icon(Icons.Filled.MoreVert, contentDescription = "Opponent options")
+                                }
+                                DropdownMenu(
+                                    expanded = opponentMenuOpen,
+                                    onDismissRequest = { opponentMenuOpen = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Report player") },
+                                        onClick = { opponentMenuOpen = false; showReportOpponent = true },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Block player") },
+                                        onClick = { opponentMenuOpen = false; showBlockOpponent = true },
+                                    )
+                                }
+                            }
                         }
                     }
                 },

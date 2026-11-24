@@ -8,6 +8,7 @@ import com.chartmann.knightfall.coach.CoachModelManager
 import com.chartmann.knightfall.coach.GemmaCoach
 import com.chartmann.knightfall.data.AuthRepository
 import com.chartmann.knightfall.data.GameRepository
+import com.chartmann.knightfall.data.ModerationRepository
 import com.chartmann.knightfall.data.SettingsRepository
 import com.chartmann.knightfall.data.UserRepository
 import com.chartmann.knightfall.training.PuzzleRepository
@@ -22,6 +23,7 @@ class AppContainer(app: KnightfallApp) {
     val auth = AuthRepository()
     val users = UserRepository()
     val games = GameRepository()
+    val moderation = ModerationRepository()
     val stockfish = StockfishEngine(app)
     val modelManager = CoachModelManager(app)
     val coach = GemmaCoach(modelManager)
@@ -45,7 +47,9 @@ class KnightfallApp : Application() {
         container = AppContainer(this)
         createNotificationChannels()
         appScope.launch { settings.applyPrivacyChoices() }
-        com.chartmann.knightfall.ads.AdManager.initialize(this)
+        // Ads are NOT initialized here: ConsentManager runs the UMP consent
+        // flow from MainActivity and initializes the Mobile Ads SDK only
+        // once consent gathering completes and allows ads.
     }
 
     private fun createNotificationChannels() {

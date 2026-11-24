@@ -9,12 +9,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.chartmann.knightfall.BuildConfig
+import com.chartmann.knightfall.ads.AdManager
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 
 @Composable
 fun BannerAdView(modifier: Modifier = Modifier) {
+    // No banner until UMP consent has completed and allows ads.
+    if (!AdManager.adsAllowed) {
+        return
+    }
     val bannerId = BuildConfig.ADMOB_BANNER_AD_ID
     if (bannerId.isBlank()) {
         return

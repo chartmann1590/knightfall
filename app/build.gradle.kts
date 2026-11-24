@@ -191,6 +191,7 @@ dependencies {
     implementation(libs.credentials.play.services)
     implementation(libs.googleid)
     implementation(libs.google.play.services.ads)
+    implementation(libs.google.ump)
 
     implementation(libs.litertlm)
     implementation(libs.chesslib)

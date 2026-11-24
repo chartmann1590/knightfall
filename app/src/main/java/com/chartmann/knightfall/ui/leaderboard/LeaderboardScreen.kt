@@ -18,12 +18,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -33,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,7 +48,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.chartmann.knightfall.AppContainer
 import com.chartmann.knightfall.data.model.PublicProfile
+import com.chartmann.knightfall.ui.components.BlockPlayerDialog
+import com.chartmann.knightfall.ui.components.ReportPlayerDialog
 import com.chartmann.knightfall.ui.theme.Gold
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,12 +61,20 @@ fun LeaderboardScreen(
 ) {
     var loading by remember { mutableStateOf(true) }
     var players by remember { mutableStateOf<List<PublicProfile>>(emptyList()) }
+    var blockedUids by remember { mutableStateOf<List<String>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var reportTarget by remember { mutableStateOf<PublicProfile?>(null) }
+    var blockTarget by remember { mutableStateOf<PublicProfile?>(null) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val myUid = container.auth.uid
 
     LaunchedEffect(Unit) {
         try {
-            players = container.users.leaderboard()
+            if (myUid != null) {
+                blockedUids = container.users.getProfile(myUid)?.blockedUids ?: emptyList()
+            }
+            players = container.users.leaderboard(blockedUids = blockedUids, myUid = myUid)
         } catch (e: Exception) {
             error = "Couldn't load the leaderboard — check your connection"
         } finally {
@@ -66,6 +83,7 @@ fun LeaderboardScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = { Text("Leaderboard") },
@@ -118,16 +136,81 @@ fun LeaderboardScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     itemsIndexed(players) { index, player ->
-                        LeaderboardRow(rank = index + 1, player = player, isMe = player.uid == myUid)
+                        LeaderboardRow(
+                            rank = index + 1,
+                            player = player,
+                            isMe = player.uid == myUid,
+                            canModerate = myUid != null && player.uid != myUid,
+                            onReport = { reportTarget = player },
+                            onBlock = { blockTarget = player },
+                        )
                     }
                 }
             }
+        }
+
+        reportTarget?.let { target ->
+            ReportPlayerDialog(
+                playerName = target.username,
+                onDismiss = { reportTarget = null },
+                onReport = { reason ->
+                    reportTarget = null
+                    val reporter = myUid
+                    scope.launch {
+                        try {
+                            if (reporter != null) {
+                                container.moderation.reportPlayer(
+                                    reporterUid = reporter,
+                                    reportedUid = target.uid,
+                                    reportedName = target.username,
+                                    reason = reason,
+                                    context = "leaderboard",
+                                )
+                            }
+                            snackbar.showSnackbar("Report sent — thanks, we'll review it.")
+                        } catch (e: Exception) {
+                            snackbar.showSnackbar("Couldn't send the report. Please try again.")
+                        }
+                    }
+                },
+            )
+        }
+
+        blockTarget?.let { target ->
+            BlockPlayerDialog(
+                playerName = target.username,
+                onDismiss = { blockTarget = null },
+                onBlock = {
+                    blockTarget = null
+                    val me = myUid
+                    scope.launch {
+                        try {
+                            if (me != null) {
+                                container.moderation.blockPlayer(me, target.uid)
+                                blockedUids = blockedUids + target.uid
+                                players = players.filter { it.uid != target.uid }
+                            }
+                            snackbar.showSnackbar("${target.username} blocked.")
+                        } catch (e: Exception) {
+                            snackbar.showSnackbar("Couldn't block that player. Please try again.")
+                        }
+                    }
+                },
+            )
         }
     }
 }
 
 @Composable
-private fun LeaderboardRow(rank: Int, player: PublicProfile, isMe: Boolean) {
+private fun LeaderboardRow(
+    rank: Int,
+    player: PublicProfile,
+    isMe: Boolean,
+    canModerate: Boolean = false,
+    onReport: () -> Unit = {},
+    onBlock: () -> Unit = {},
+) {
+    var menuOpen by remember { mutableStateOf(false) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -182,6 +265,23 @@ private fun LeaderboardRow(rank: Int, player: PublicProfile, isMe: Boolean) {
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
             )
+            if (canModerate) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Player options")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Report player") },
+                            onClick = { menuOpen = false; onReport() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Block player") },
+                            onClick = { menuOpen = false; onBlock() },
+                        )
+                    }
+                }
+            }
         }
     }
 }
