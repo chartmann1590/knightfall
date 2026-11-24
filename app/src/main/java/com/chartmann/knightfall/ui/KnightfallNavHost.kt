@@ -271,7 +271,7 @@ private fun MatchmakingScreen(
         try {
             val uid = container.auth.uid ?: error("Not signed in")
             val profile = container.users.getProfile(uid) ?: error("Profile not ready")
-            val gameId = container.games.quickMatch(uid, profile.username, profile.elo)
+            val gameId = container.games.quickMatch(uid, profile.username, profile.elo, profile.blockedUids.toSet())
             onGameReady(gameId)
         } catch (e: Exception) {
             error = e.message ?: "Matchmaking failed"

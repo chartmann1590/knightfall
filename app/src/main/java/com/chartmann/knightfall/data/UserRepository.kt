@@ -151,12 +151,20 @@ class UserRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
         publicDoc(uid).set(mirror, SetOptions.merge()).await()
     }
 
-    suspend fun leaderboard(limit: Long = 100): List<PublicProfile> =
-        db.collection("publicProfiles")
-            .orderBy("elo", Query.Direction.DESCENDING)
-            .limit(limit)
-            .get().await()
-            .toObjects(PublicProfile::class.java)
+    suspend fun leaderboard(
+        limit: Long = 100,
+        blockedUids: Collection<String> = emptyList(),
+        myUid: String? = null,
+    ): List<PublicProfile> =
+        BlockFilter.filterProfiles(
+            db.collection("publicProfiles")
+                .orderBy("elo", Query.Direction.DESCENDING)
+                .limit(limit)
+                .get().await()
+                .toObjects(PublicProfile::class.java),
+            blockedUids,
+            myUid,
+        )
 
     suspend fun deleteAllUserData(uid: String) {
         publicDoc(uid).delete().await()

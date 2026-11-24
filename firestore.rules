@@ -11,6 +11,8 @@ service cloud.firestore {
     }
 
     // Private per-user profile. Only the owner can read or write.
+    // (The doc also carries the owner's own blockedUids block list, which
+    // only the owner can change, like every other field on this doc.)
     match /users/{uid} {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid)
@@ -92,6 +94,20 @@ service cloud.firestore {
         && request.resource.data.hostUid == request.auth.uid;
       // The joiner deletes the code when consuming it.
       allow delete: if signedIn();
+    }
+
+    // Player reports filed in-app via "Report player". Create-only, and
+    // only as oneself; reports are reviewed by the developer in the
+    // Firebase console, so clients get no read/update/delete access.
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.reportedUid is string
+        && request.resource.data.reportedUid.size() > 0
+        && request.resource.data.reportedUid != request.auth.uid
+        && request.resource.data.reason in ['username', 'cheating', 'harassment', 'other']
+        && request.resource.data.status == 'open';
+      allow read, update, delete: if false;
     }
 
     // Allow public creation of deletion requests

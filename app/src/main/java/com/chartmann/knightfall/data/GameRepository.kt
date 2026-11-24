@@ -64,7 +64,7 @@ class GameRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
      * wait. Firestore transactions retry on contention, and the security
      * rules only allow claiming a seat on a game still in 'waiting'.
      */
-    suspend fun quickMatch(uid: String, username: String, elo: Int): String {
+    suspend fun quickMatch(uid: String, username: String, elo: Int, blockedUids: Set<String> = emptySet()): String {
         // Ignore stale lobbies whose host probably left without cancelling.
         val freshCutoff = Timestamp(
             com.google.firebase.Timestamp.now().seconds - QUICK_MATCH_MAX_AGE_SECONDS, 0,
@@ -78,6 +78,7 @@ class GameRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
             .get().await()
             .toObjects(OnlineGame::class.java)
             .filter { it.whiteUid != uid && it.blackUid != uid }
+            .filter { !BlockFilter.isBlockedOpponent(it.whiteUid, blockedUids) && !BlockFilter.isBlockedOpponent(it.blackUid, blockedUids) }
 
         for (candidate in candidates) {
             try {

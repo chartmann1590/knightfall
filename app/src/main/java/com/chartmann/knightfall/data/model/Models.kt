@@ -21,6 +21,8 @@ data class UserProfile(
     val puzzleStreak: Int = 0,
     val bestPuzzleStreak: Int = 0,
     val earnedBadges: List<String> = emptyList(),
+    /** Uids this player has blocked (stored on their own private doc). */
+    val blockedUids: List<String> = emptyList(),
 )
 
 /** Public mirror stored at publicProfiles/{uid} for opted-in players. */
